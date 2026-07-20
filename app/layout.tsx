@@ -21,10 +21,9 @@ export const viewport: Viewport = {
   // gestures ambiguous on touch devices. Text scaling still works through the
   // browser's own font-size setting, so this does not trap users at 100%.
   maximumScale: 1,
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#e7ddc6' },
-    { media: '(prefers-color-scheme: dark)', color: '#191710' },
-  ],
+  // The design is a printed atlas page and has one scheme; the browser chrome
+  // matches the parchment in both light and dark system settings.
+  themeColor: '#f4ecd9',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

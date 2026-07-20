@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { useAtlas } from '@/state/atlas-store';
 import { SearchPanel } from './SearchPanel';
@@ -19,7 +19,7 @@ import {
 import { JOURNEY_BY_ID } from '@/atlas/corpus';
 import { BOOK_BY_ID } from '@/atlas/data/books';
 import { periodForYear } from '@/atlas/data/periods';
-import { formatYear } from '@/atlas/search';
+import { formatYear, formatYearRange } from '@/atlas/search';
 import type { SearchResult } from '@/atlas/search';
 
 // MapLibre touches `window` at import time, so it cannot be server-rendered.
@@ -95,6 +95,18 @@ export function Atlas() {
   }, [activeJourneyIds, mode, bookId]);
 
   const polities = useMemo(() => (showPolities ? politiesAtYear(year) : []), [showPolities, year]);
+
+  // Choosing a book (or chapter) re-frames the map around that book's places —
+  // picking Acts must carry the reader to the Aegean, not leave them parked
+  // over the Levant with the routes running off the edge of the plate. Keyed on
+  // the selection, not the derived arrays, so ordinary panning is never fought.
+  useEffect(() => {
+    if (mode !== 'book' || !bookId) return;
+    const ids = (placesForBook(bookId, chapter ?? undefined) ?? [])
+      .filter((p) => p.coordinates !== null)
+      .map((p) => p.id);
+    if (ids.length > 0) focusPlaces(ids);
+  }, [mode, bookId, chapter, focusPlaces]);
   const availableJourneys = useMemo(() => journeysAtYear(year), [year]);
   const nearbyEvents = useMemo(() => eventsNearYear(year, 40), [year]);
 
@@ -128,11 +140,17 @@ export function Atlas() {
   return (
     <div className="atlas">
       <header className="masthead">
-        <h1 className="masthead__title">Sacred Geography</h1>
-        <p className="masthead__subtitle">An historical atlas of the Bible</p>
-        <p className="label masthead__meta">
-          {ATLAS_COVERAGE.fullyIndexedBooks.length > 0 && `Edition ${ATLAS_COVERAGE.version}`}
-        </p>
+        <div className="masthead__brand">
+          <CompassRose className="masthead__rose" size={34} />
+          <div>
+            <h1 className="masthead__title">Sacred Geography</h1>
+            <p className="masthead__subtitle">An historical atlas of the biblical world</p>
+          </div>
+        </div>
+        <div className="masthead__meta">
+          <p className="masthead__edition">First Edition · {ATLAS_COVERAGE.version}</p>
+          <p className="masthead__tagline">Places · People · Routes · Empires</p>
+        </div>
       </header>
 
       <div className="rail">
@@ -180,8 +198,8 @@ export function Atlas() {
 
           {availableJourneys.length > 0 && (
             <>
-              <p className="label" style={{ marginTop: '1rem' }}>
-                Routes in this period
+              <p className="label" style={{ margin: '18px 0 7px' }}>
+                Routes in this age
               </p>
               <ul className="chips">
                 {availableJourneys.map((journey) => (
@@ -190,11 +208,6 @@ export function Atlas() {
                       type="button"
                       onClick={() => toggleJourney(journey.id)}
                       aria-pressed={activeJourneyIds.includes(journey.id)}
-                      style={
-                        activeJourneyIds.includes(journey.id)
-                          ? { borderColor: 'var(--oxblood)', color: 'var(--oxblood)' }
-                          : undefined
-                      }
                     >
                       {journey.name}
                     </button>
@@ -206,13 +219,13 @@ export function Atlas() {
 
           {nearbyEvents.length > 0 && mode === 'timeline' && (
             <>
-              <p className="label" style={{ marginTop: '1.25rem' }}>
+              <p className="label" style={{ margin: '20px 0 8px' }}>
                 Around this time
               </p>
-              <ul className="sources" style={{ marginTop: '0.35rem' }}>
+              <ul className="events-list">
                 {nearbyEvents.map((event) => (
                   <li key={event.id}>
-                    <cite>{formatYear(event.year)}</cite> — {event.name}
+                    <span className="events-list__year">{formatYear(event.year)}</span> — {event.name}
                   </li>
                 ))}
               </ul>
@@ -220,41 +233,54 @@ export function Atlas() {
           )}
 
           <hr className="rule" />
-          <p className="search__hint">{ATLAS_COVERAGE.statement}</p>
+          <p className="coverage-note">
+            A curated core of the biblical gazetteer, not every toponym in the text. Places absent
+            here may still be named in scripture. Chapter indexing is complete only for Ruth and
+            Jonah.
+          </p>
         </div>
       </div>
 
       <div className="map-region">
-        <AtlasMap
-          places={places}
-          journeys={journeys}
-          polities={polities}
-          highlightedIds={highlightedIds}
-          selectedPlaceId={selectedPlaceId}
-          focusPlaceIds={focusPlaceIds}
-          onSelectPlace={selectPlace}
-        />
-
-        {polities.length > 0 && (
-          <div className="map-legend">
-            <p className="label">Territory</p>
-            <ul className="map-legend__list">
-              {polities.map((polity) => (
-                <li key={polity.id}>
-                  <span
-                    className="map-legend__swatch"
-                    style={{ background: polity.color }}
-                    aria-hidden="true"
-                  />
-                  {polity.name}
-                </li>
-              ))}
-            </ul>
-            <p className="search__hint" style={{ marginTop: '0.5rem', maxWidth: '13rem' }}>
-              Zones of control, not surveyed borders.
-            </p>
+        {/* The framed plate: map, then its printed furniture over it. */}
+        <div className="plate">
+          <div className="plate__map">
+            <AtlasMap
+              places={places}
+              journeys={journeys}
+              polities={polities}
+              highlightedIds={highlightedIds}
+              selectedPlaceId={selectedPlaceId}
+              focusPlaceIds={focusPlaceIds}
+              onSelectPlace={selectPlace}
+            />
+            <div className="plate__vignette" aria-hidden="true" />
+            <PlateGrain />
           </div>
-        )}
+
+          <CompassRose className="plate__compass" size={56} withLetter />
+
+          {polities.length > 0 && (
+            <div className="map-legend">
+              <p className="map-legend__title">Territory</p>
+              <ul className="map-legend__list">
+                {polities.map((polity) => (
+                  <li key={polity.id}>
+                    <span
+                      className="map-legend__swatch"
+                      style={{ background: polity.color, borderColor: polity.color }}
+                      aria-hidden="true"
+                    />
+                    {polity.name}
+                  </li>
+                ))}
+              </ul>
+              <p className="map-legend__note">Zones of control, not surveyed borders.</p>
+            </div>
+          )}
+        </div>
+
+        <ConfidenceKey />
 
         {selectedPlaceId && (
           <PlacePanel
@@ -285,13 +311,88 @@ function PeriodDetail({ year }: { year: number }) {
 
   return (
     <section aria-label="Current period">
-      <p className="label books__division">Period</p>
-      <h2 className="panel__name" style={{ fontSize: '1.25rem' }}>
-        {period.name}
-      </h2>
-      <p className="panel__prose" style={{ marginTop: '0.5rem' }}>
-        {period.summary}
-      </p>
+      <p className="label label--accent age__eyebrow">The Age of</p>
+      <h2 className="age__name">{period.name.replace(/^The /, '')}</h2>
+      <p className="age__range">{formatYearRange(period.range.start, period.range.end)}</p>
+      <p className="age__summary">{period.summary}</p>
     </section>
+  );
+}
+
+/**
+ * The compass rose from the masthead of the approved design — reused at two
+ * sizes, as the brand mark and as the plate's north indicator.
+ */
+function CompassRose({ className, size, withLetter = false }: { className?: string; size: number; withLetter?: boolean }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 40 40" className={className} aria-hidden="true">
+      <circle cx="20" cy="20" r="18.5" fill="none" stroke="currentColor" strokeWidth="1.2" />
+      <circle cx="20" cy="20" r="13" fill="none" stroke="currentColor" strokeWidth="0.7" opacity="0.55" />
+      <path d="M20 2 L23 20 L20 38 L17 20 Z" fill="currentColor" />
+      <path d="M2 20 L20 17 L38 20 L20 23 Z" fill="currentColor" opacity="0.35" />
+      <circle cx="20" cy="20" r="1.8" fill="var(--color-surface)" />
+      {withLetter && (
+        <text
+          x="20"
+          y="-2"
+          textAnchor="middle"
+          style={{ fontFamily: 'var(--font-heading)', fontSize: '7px', fill: 'currentColor' }}
+        >
+          N
+        </text>
+      )}
+    </svg>
+  );
+}
+
+/** Film grain over the plate, so the tiles sit in the paper rather than on it. */
+function PlateGrain() {
+  return (
+    <svg className="plate__grain" aria-hidden="true" width="100%" height="100%">
+      <filter id="sg-grain">
+        <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch" />
+        <feColorMatrix
+          type="matrix"
+          values="0 0 0 0 0.35, 0 0 0 0 0.28, 0 0 0 0 0.18, 0 0 0 0.05 0"
+        />
+      </filter>
+      <rect width="100%" height="100%" filter="url(#sg-grain)" />
+    </svg>
+  );
+}
+
+/**
+ * The floating key to site-identification confidence. Its four marks are drawn
+ * with the same fills and strokes the map's circle layer uses, so the key is a
+ * statement of fact about the plate rather than an approximation of it.
+ */
+function ConfidenceKey() {
+  return (
+    <div className="conf-key" aria-label="Key to identification confidence">
+      <span>
+        <svg width="12" height="12" aria-hidden="true">
+          <circle cx="6" cy="6" r="4.5" fill="var(--color-accent-700)" />
+        </svg>
+        Certain
+      </span>
+      <span>
+        <svg width="12" height="12" aria-hidden="true">
+          <circle cx="6" cy="6" r="4.5" fill="var(--color-accent-300)" stroke="var(--color-accent-700)" strokeWidth="1" />
+        </svg>
+        Probable
+      </span>
+      <span>
+        <svg width="12" height="12" aria-hidden="true">
+          <circle cx="6" cy="6" r="4.5" fill="var(--color-bg)" stroke="var(--color-accent-700)" strokeWidth="1.5" />
+        </svg>
+        Contested
+      </span>
+      <span>
+        <svg width="12" height="12" aria-hidden="true">
+          <circle cx="6" cy="6" r="4.5" fill="none" stroke="var(--color-neutral-600)" strokeWidth="1.2" strokeDasharray="2 2" />
+        </svg>
+        Conjectural
+      </span>
+    </div>
   );
 }

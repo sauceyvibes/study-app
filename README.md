@@ -45,16 +45,28 @@ This is a working application on a curated corpus, not a finished atlas.
   needs no data changes.
 - **The default basemap is not licensed for production traffic.** See below.
 
-## Before deploying publicly
+## The basemap
 
-The default basemap draws tiles from the OpenStreetMap Foundation, whose usage
-policy excludes production applications. The app displays a notice while this
-fallback is active. Set one of these first:
+The production basemap is **Mapbox Outdoors at dusk**: Outdoors cartography
+served through Mapbox's Static Tiles API (their documented path for third-party
+renderers), graded to evening in the style layer. Mapbox's own `dusk` light
+preset belongs to their Standard style and runs only inside their proprietary
+SDK, which refuses to render anything without a token — so this route keeps the
+dusk look without making a Mapbox account a hard requirement to develop the app.
 
 ```
-NEXT_PUBLIC_MAP_STYLE_URL=https://...    # any MapLibre style you control
+NEXT_PUBLIC_MAPBOX_TOKEN=pk....          # Mapbox Outdoors, dusk-graded (intended)
+NEXT_PUBLIC_MAP_STYLE_URL=https://...    # or any MapLibre style you control
 NEXT_PUBLIC_MAPTILER_KEY=...             # or a MapTiler key
 ```
+
+Get a token at account.mapbox.com (the free tier is ample); add it to
+`.env.local` for development and to Vercel under Project → Settings →
+Environment Variables for production, then redeploy.
+
+Without any of these, the app falls back to OpenStreetMap Foundation tiles,
+whose usage policy excludes production applications; the map shows a notice
+while that fallback is active.
 
 Deploying to Vercel otherwise needs no configuration — every route prerenders to
 static HTML, and `vercel.json` pins the framework preset so the build does not

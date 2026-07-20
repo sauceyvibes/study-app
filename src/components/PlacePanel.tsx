@@ -56,27 +56,25 @@ export function PlacePanel({ placeId, onClose, onSelectPlace }: PlacePanelProps)
   const polities = resolvePolities(place.polities);
 
   return (
-    <aside className="panel" aria-label={`${place.name} — details`} tabIndex={-1}>
+    <aside className="panel sg-scroll" aria-label={`${place.name} — details`} tabIndex={-1}>
       <button type="button" className="panel__close" onClick={onClose}>
-        Close
+        Close ✕
       </button>
 
       <h2 className="panel__name">{place.name}</h2>
       {place.modernName && <p className="panel__modern">Today {place.modernName}</p>}
 
-      <p style={{ margin: '0.6rem 0 0' }}>
+      <p style={{ margin: '14px 0 0' }}>
         <span className={`confidence confidence--${place.confidence}`}>
           <span className="confidence__mark" aria-hidden="true" />
           {CONFIDENCE_TEXT[place.confidence]}
         </span>
       </p>
-      <p className="panel__prose" style={{ marginTop: '0.25rem', fontSize: '0.8125rem', fontStyle: 'italic' }}>
-        {CONFIDENCE_EXPLANATION[place.confidence]}
-      </p>
+      <p className="confidence-explain">{CONFIDENCE_EXPLANATION[place.confidence]}</p>
 
       <AncientNames place={place} />
 
-      <hr className="rule" />
+      <hr className="panel__divider" />
 
       <p className="panel__prose">{place.description}</p>
 
@@ -98,13 +96,13 @@ export function PlacePanel({ placeId, onClose, onSelectPlace }: PlacePanelProps)
       {place.archaeology && (
         <section className="panel__section">
           <h3 className="panel__heading">Archaeology</h3>
-          <p className="panel__prose">{place.archaeology}</p>
+          <p className="panel__prose panel__prose--small">{place.archaeology}</p>
         </section>
       )}
 
       <section className="panel__section">
         <h3 className="panel__heading">In the narrative</h3>
-        <p className="panel__prose" style={{ fontSize: '0.875rem', color: 'var(--ink-soft)' }}>
+        <p className="panel__prose panel__prose--small" style={{ color: 'var(--color-neutral-700)' }}>
           {formatYearRange(place.occupation.start, place.occupation.end)}
         </p>
       </section>
@@ -112,11 +110,10 @@ export function PlacePanel({ placeId, onClose, onSelectPlace }: PlacePanelProps)
       {place.scripture.length > 0 && (
         <section className="panel__section">
           <h3 className="panel__heading">References</h3>
-          <ul className="refs">
-            {place.scripture.map((ref) => (
-              <li key={`${ref.book}-${ref.chapter}-${ref.verse ?? 0}`}>{formatScriptureRef(ref)}</li>
-            ))}
-          </ul>
+          {/* One flowing line, as a printed index would set it. */}
+          <p className="panel__refs">
+            {place.scripture.map((ref) => formatScriptureRef(ref)).join(' · ')}
+          </p>
         </section>
       )}
 
@@ -208,7 +205,7 @@ function AncientNames({ place }: { place: Place }) {
             <span className="panel__script" lang="he" dir="rtl">
               {hebrew}
             </span>
-            {hebrewTranslit && <span style={{ fontStyle: 'italic' }}> {hebrewTranslit}</span>}
+            {hebrewTranslit && <span className="translit"> {hebrewTranslit}</span>}
           </dd>
         </>
       )}
@@ -219,7 +216,7 @@ function AncientNames({ place }: { place: Place }) {
             <span className="panel__script" lang="el">
               {greek}
             </span>
-            {greekTranslit && <span style={{ fontStyle: 'italic' }}> {greekTranslit}</span>}
+            {greekTranslit && <span className="translit"> {greekTranslit}</span>}
           </dd>
         </>
       )}

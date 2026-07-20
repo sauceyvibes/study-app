@@ -73,21 +73,24 @@ function ChapterPicker({
     <>
       <hr className="rule-double" />
 
-      <p className="label">{book.name}</p>
-      <p className="panel__prose" style={{ marginTop: '0.2rem' }}>
-        Set in {formatYearRange(book.narrativeRange.start, book.narrativeRange.end)}.
+      <p className="label label--accent" style={{ margin: '0 0 2px' }}>
+        Book of
+      </p>
+      <h3 className="book__name">{book.name}</h3>
+      <p className="book__range">
+        Set in {formatYearRange(book.narrativeRange.start, book.narrativeRange.end)}
       </p>
 
       {!book.indexed && (
         <div className="empty">
           <p>
-            {book.name} has not yet been indexed chapter by chapter. The chapters marked below are
-            the ones we have confirmed; the rest are not necessarily empty, only unverified.
+            This book has not been indexed chapter by chapter. The chapters marked below are the
+            ones confirmed; the rest are not necessarily empty, only unverified.
           </p>
         </div>
       )}
 
-      <p className="label" style={{ marginTop: '1rem' }}>
+      <p className="label" style={{ margin: '16px 0 7px' }}>
         Chapter
       </p>
       <ul className="chapters">
@@ -97,7 +100,7 @@ function ChapterPicker({
             className="chapters__button"
             aria-pressed={chapter === null}
             onClick={() => onSelectChapter(null)}
-            style={{ minWidth: '3.5rem' }}
+            style={{ minWidth: '52px' }}
           >
             All
           </button>

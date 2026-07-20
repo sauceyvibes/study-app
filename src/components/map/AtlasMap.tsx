@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import maplibregl, { type Map as MapLibreMap, type MapGeoJSONFeature, type GeoJSONSource } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { resolveBasemap, DEFAULT_VIEW, MAX_BOUNDS } from '@/lib/basemap';
-import { placesToGeoJSON, journeysToGeoJSON, politiesToGeoJSON, boundsFor } from '@/lib/map-layers';
+import { placesToGeoJSON, journeysToGeoJSON, politiesToGeoJSON, boundsFor, DECOR_LABELS } from '@/lib/map-layers';
 import type { Journey, Place, Polity } from '@/atlas/types';
 
 interface AtlasMapProps {
@@ -18,7 +18,23 @@ interface AtlasMapProps {
   onSelectPlace: (placeId: string | null) => void;
 }
 
-const SOURCES = { places: 'atlas-places', routes: 'atlas-routes', polities: 'atlas-polities' } as const;
+const SOURCES = { places: 'atlas-places', routes: 'atlas-routes', polities: 'atlas-polities', decor: 'atlas-decor' } as const;
+
+/**
+ * The plate palette, mirroring the design tokens in globals.css. MapLibre paint
+ * properties cannot read CSS custom properties, so the crossover values live
+ * here; if globals.css changes, change these with it.
+ */
+const INK = {
+  text: '#241d11',
+  halo: 'rgba(244, 236, 217, 0.9)',
+  haloSoft: 'rgba(244, 236, 217, 0.8)',
+  parchment: '#f4ecd9',
+  accent: '#8a4023', // terracotta — routes overland, highlights, selection
+  accent2: '#47756a', // sea teal — sea legs, decorative water labels
+  accent2Deep: '#335c53',
+  neutral: '#85765a', // inferred routes, conjectural sites
+} as const;
 
 /**
  * The map surface.
@@ -45,6 +61,11 @@ export function AtlasMap({
 }: AtlasMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
+  // Read by the framing effect without being one of its triggers: selection
+  // alone must never cause a re-fit (clicking a dot would jump the camera to
+  // whatever bounds were last focused), but when a focus change and a selection
+  // arrive together, the fit must reserve room for the panel that is opening.
+  const selectedRef = useRef(selectedPlaceId);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const basemap = useMemo(() => resolveBasemap(), []);
 
@@ -79,6 +100,10 @@ export function AtlasMap({
       // our own layers do not depend on the basemap. Only report an error when
       // the style itself could not be parsed, which is unrecoverable.
       if (event.error && 'status' in event.error) return;
+      // Always log: MapLibre reports an invalid layer spec here and then simply
+      // omits the layer, which once cost us every route on the map. Silent in
+      // production telemetry-wise, loud for anyone with a console open.
+      console.error('[atlas] map error:', event.error?.message ?? event.error);
       setStatus((current) => (current === 'ready' ? current : 'error'));
     });
 
@@ -86,6 +111,13 @@ export function AtlasMap({
     // waits for the first tiles to arrive, and hanging tile requests would leave
     // the loading overlay covering a map that is perfectly usable — the
     // gazetteer, routes and territory are all drawn from local data.
+    // Dev-only escape hatch: this project has repeatedly needed to interrogate
+    // the live map from the console (missing layers, framing bugs), and the
+    // instance is otherwise unreachable from outside the component.
+    if (process.env.NODE_ENV === 'development') {
+      (window as unknown as { __atlasMap?: MapLibreMap }).__atlasMap = map;
+    }
+
     map.on('style.load', () => {
       installLayers(map);
       setStatus('ready');
@@ -123,6 +155,7 @@ export function AtlasMap({
 
   // ── Selection ring ───────────────────────────────────────────────────────
   useEffect(() => {
+    selectedRef.current = selectedPlaceId;
     const map = mapRef.current;
     if (!map || status !== 'ready') return;
     map.setFilter('place-selected', ['==', ['get', 'id'], selectedPlaceId ?? '__none__']);
@@ -136,10 +169,17 @@ export function AtlasMap({
     const bounds = boundsFor(focusPlaceIds);
     if (!bounds) return;
 
+    // Asymmetric padding keeps the subject clear of the detail panel — but only
+    // when a panel is actually open, and only when the container can afford it.
+    // Both conditions matter: this once reserved 420px against a 581px-wide map
+    // because it measured the window instead of the container, and MapLibre
+    // dutifully framed the subject into the 101px that remained.
+    const width = map.getContainer().clientWidth;
+    const panelPad = selectedRef.current !== null ? Math.min(400, Math.round(width * 0.45)) : 0;
+    const right = width - (60 + panelPad + 60) >= 180 ? 60 + panelPad : 60;
+
     map.fitBounds(bounds, {
-      // Asymmetric padding: the detail panel covers the right edge on desktop,
-      // so centring naively would push the subject under it.
-      padding: { top: 60, bottom: 60, left: 60, right: window.innerWidth > 960 ? 420 : 60 },
+      padding: { top: 60, bottom: 60, left: 60, right },
       maxZoom: 9,
       duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 900,
     });
@@ -212,9 +252,9 @@ export function AtlasMap({
 
       {status === 'ready' && basemap.isDevelopmentFallback && (
         <p className="map-notice">
-          Development basemap: tiles are served from the OpenStreetMap Foundation, whose usage
-          policy excludes production traffic. Configure a basemap provider before deploying
-          publicly — see <code>src/lib/basemap.ts</code>.
+          Development basemap. Set <code>NEXT_PUBLIC_MAPBOX_TOKEN</code> to draw the Mapbox
+          Outdoors dusk basemap; these OpenStreetMap tiles are not licensed for production
+          traffic — see <code>src/lib/basemap.ts</code>.
         </p>
       )}
     </>
@@ -233,6 +273,38 @@ function installLayers(map: MapLibreMap): void {
   map.addSource(SOURCES.polities, { type: 'geojson', data: emptyCollection() });
   map.addSource(SOURCES.routes, { type: 'geojson', data: emptyCollection() });
   map.addSource(SOURCES.places, { type: 'geojson', data: emptyCollection() });
+  map.addSource(SOURCES.decor, { type: 'geojson', data: DECOR_LABELS });
+
+  // Decorative water labels — atlas-plate furniture, under everything else.
+  map.addLayer({
+    id: 'decor-label',
+    type: 'symbol',
+    source: SOURCES.decor,
+    layout: {
+      'text-field': ['get', 'name'],
+      'text-font': ['Noto Sans Regular'],
+      // Zoom interpolation must be the top-level expression; the per-feature
+      // size factor lives in the interpolation's output values instead.
+      'text-size': [
+        'interpolate',
+        ['linear'],
+        ['zoom'],
+        4, ['*', ['get', 'size'], 12],
+        8, ['*', ['get', 'size'], 17],
+      ],
+      'text-letter-spacing': 0.38,
+      'text-transform': 'uppercase',
+      'text-max-width': 20,
+      'text-allow-overlap': false,
+      'text-optional': true,
+    },
+    paint: {
+      'text-color': INK.accent2Deep,
+      'text-opacity': 0.6,
+      'text-halo-color': INK.haloSoft,
+      'text-halo-width': 1,
+    },
+  });
 
   // Territory — a wash of colour with a firmer edge, never a hard border.
   map.addLayer({
@@ -275,23 +347,53 @@ function installLayers(map: MapLibreMap): void {
     paint: {
       'text-color': ['get', 'color'],
       'text-opacity': 0.75,
-      'text-halo-color': 'rgba(231, 221, 198, 0.8)',
+      'text-halo-color': INK.haloSoft,
       'text-halo-width': 1.5,
     },
   });
 
-  // Routes — sea legs dashed differently from inferred ones, so the two kinds of
-  // uncertainty stay visually distinct.
+  // Routes — one layer per travel mode. This is not a stylistic choice:
+  // `line-dasharray` cannot be data-driven in MapLibre, and a layer that tries
+  // is rejected in its entirety (surfaced only as an error event), which is
+  // exactly how routes silently failed to draw before this was split.
+  const routeWidth: maplibregl.DataDrivenPropertyValueSpecification<number> = [
+    'interpolate', ['linear'], ['zoom'], 4, 1.4, 10, 2.6,
+  ];
+
   map.addLayer({
-    id: 'route-line',
+    id: 'route-line-land',
     type: 'line',
     source: SOURCES.routes,
+    filter: ['==', ['get', 'mode'], 'land'],
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: { 'line-color': INK.accent, 'line-width': routeWidth, 'line-opacity': 0.85 },
+  });
+
+  map.addLayer({
+    id: 'route-line-sea',
+    type: 'line',
+    source: SOURCES.routes,
+    filter: ['==', ['get', 'mode'], 'sea'],
     layout: { 'line-cap': 'round', 'line-join': 'round' },
     paint: {
-      'line-color': ['match', ['get', 'mode'], 'sea', '#3a615a', 'inferred', '#8a7f6b', '#7b2e2e'],
-      'line-width': ['interpolate', ['linear'], ['zoom'], 4, 1.4, 10, 2.6],
+      'line-color': INK.accent2,
+      'line-width': routeWidth,
       'line-opacity': 0.85,
-      'line-dasharray': ['match', ['get', 'mode'], 'inferred', ['literal', [2, 3]], 'sea', ['literal', [6, 3]], ['literal', [1, 0]]],
+      'line-dasharray': [6, 3],
+    },
+  });
+
+  map.addLayer({
+    id: 'route-line-inferred',
+    type: 'line',
+    source: SOURCES.routes,
+    filter: ['==', ['get', 'mode'], 'inferred'],
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: {
+      'line-color': INK.neutral,
+      'line-width': routeWidth,
+      'line-opacity': 0.8,
+      'line-dasharray': [2, 3],
     },
   });
 
@@ -302,15 +404,18 @@ function installLayers(map: MapLibreMap): void {
     source: SOURCES.places,
     filter: ['==', ['get', 'id'], '__none__'],
     paint: {
-      'circle-radius': 11,
+      'circle-radius': 12,
       'circle-color': 'transparent',
-      'circle-stroke-color': '#7b2e2e',
-      'circle-stroke-width': 1.5,
+      'circle-stroke-color': INK.accent2,
+      'circle-stroke-width': 1.6,
     },
   });
 
-  // Settlements. Radius scales with rank and zoom; contested identifications get
-  // a hollow centre, which is the printed-atlas convention for an uncertain site.
+  // Settlements. Radius scales with rank and zoom. Colour encodes confidence,
+  // matching the key on the plate: certain filled terracotta, probable a paler
+  // fill with a firm ring, contested a parchment centre, conjectural a faint
+  // neutral ring. Highlight is carried by weight, not colour, so the confidence
+  // signal survives being highlighted.
   map.addLayer({
     id: 'place-dot',
     type: 'circle',
@@ -324,13 +429,22 @@ function installLayers(map: MapLibreMap): void {
         10, ['+', 3.5, ['*', 1.3, ['get', 'rank']]],
       ],
       'circle-color': [
-        'case',
-        ['get', 'highlighted'], '#7b2e2e',
-        ['match', ['get', 'confidence'], 'contested', 'rgba(0,0,0,0)', 'conjectural', 'rgba(0,0,0,0)', '#23201a'],
+        'match',
+        ['get', 'confidence'],
+        'certain', INK.accent,
+        'probable', '#e2b49c',
+        'contested', INK.parchment,
+        INK.parchment,
       ],
-      'circle-stroke-color': ['case', ['get', 'highlighted'], '#7b2e2e', '#23201a'],
-      'circle-stroke-width': 1.2,
-      'circle-opacity': 0.95,
+      'circle-stroke-color': [
+        'match',
+        ['get', 'confidence'],
+        'conjectural', INK.neutral,
+        'unlocated', INK.neutral,
+        INK.accent,
+      ],
+      'circle-stroke-width': ['case', ['get', 'highlighted'], 2.4, 1.2],
+      'circle-opacity': ['match', ['get', 'confidence'], 'conjectural', 0.75, 0.95],
     },
   });
 
@@ -352,8 +466,8 @@ function installLayers(map: MapLibreMap): void {
       'text-optional': true,
     },
     paint: {
-      'text-color': ['case', ['get', 'highlighted'], '#7b2e2e', '#23201a'],
-      'text-halo-color': 'rgba(231, 221, 198, 0.9)',
+      'text-color': ['case', ['get', 'highlighted'], INK.accent, INK.text],
+      'text-halo-color': INK.halo,
       'text-halo-width': 1.6,
     },
   });

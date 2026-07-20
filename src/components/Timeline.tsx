@@ -35,10 +35,10 @@ export function Timeline({ year, onChange }: TimelineProps) {
 
         <div className="timeline__nudge">
           <button type="button" onClick={() => onChange(year - 50)} aria-label="Back fifty years">
-            − 50
+            − 50 yr
           </button>
           <button type="button" onClick={() => onChange(year + 50)} aria-label="Forward fifty years">
-            + 50
+            + 50 yr
           </button>
         </div>
       </div>

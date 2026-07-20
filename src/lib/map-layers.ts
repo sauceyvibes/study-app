@@ -177,6 +177,20 @@ export function politiesToGeoJSON(polities: Polity[]): FeatureCollection<Polygon
   return { type: 'FeatureCollection', features };
 }
 
+/**
+ * Decorative water labels, in the manner of a printed atlas plate — "The Great
+ * Sea" set letterspaced across the eastern Mediterranean. These are furniture,
+ * not gazetteer entries: they never appear in search and have no detail panel.
+ */
+export const DECOR_LABELS: FeatureCollection<Point, { name: string; size: number }> = {
+  type: 'FeatureCollection',
+  features: [
+    { type: 'Feature', geometry: { type: 'Point', coordinates: [32.6, 33.6] }, properties: { name: 'The Great Sea', size: 1.4 } },
+    { type: 'Feature', geometry: { type: 'Point', coordinates: [36.4, 25.9] }, properties: { name: 'Red Sea', size: 1 } },
+    { type: 'Feature', geometry: { type: 'Point', coordinates: [50.5, 28.6] }, properties: { name: 'The Lower Sea', size: 1 } },
+  ],
+};
+
 /** Bounding box of a set of places, padded, or null if none can be located. */
 export function boundsFor(placeIds: readonly string[]): [[number, number], [number, number]] | null {
   const coords = placeIds

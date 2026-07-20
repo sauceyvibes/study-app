@@ -42,6 +42,19 @@ export function SearchPanel({ query, onQueryChange, onSelect }: SearchPanelProps
       </h2>
 
       <div className="search__field">
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="var(--color-neutral-600)"
+          strokeWidth="2.4"
+          strokeLinecap="round"
+          aria-hidden="true"
+        >
+          <circle cx="11" cy="11" r="7" />
+          <path d="m21 21-4.3-4.3" />
+        </svg>
         <label className="visually-hidden" htmlFor={inputId}>
           Search places, people, events or a scripture reference
         </label>
@@ -52,7 +65,7 @@ export function SearchPanel({ query, onQueryChange, onSelect }: SearchPanelProps
           value={query}
           spellCheck={false}
           autoComplete="off"
-          placeholder="Jerusalem, Paul, Acts 16, Yerushalayim…"
+          placeholder="Jerusalem, Paul, Acts 16…"
           onChange={(event) => onQueryChange(event.target.value)}
         />
         {trimmed.length > 0 && (
@@ -70,11 +83,9 @@ export function SearchPanel({ query, onQueryChange, onSelect }: SearchPanelProps
 
       {showNoResults && (
         <div className="empty">
-          <p>Nothing in the atlas matches “{trimmed}”.</p>
           <p>
-            This edition carries a curated core of the gazetteer, so a place named in scripture may
-            still be absent here. Try an alternative spelling, or a chapter reference such as
-            “Joshua 10”.
+            Nothing in this edition matches “{trimmed}”. Try an alternative spelling, or a chapter
+            reference such as “Joshua 10”.
           </p>
         </div>
       )}
@@ -84,7 +95,7 @@ export function SearchPanel({ query, onQueryChange, onSelect }: SearchPanelProps
           <p className="visually-hidden" role="status">
             {results.length} {results.length === 1 ? 'result' : 'results'}
           </p>
-          <ul className="results">
+          <ul className="results sg-scroll">
             {results.map((result) => (
               <li className="results__item" key={`${result.kind}-${result.id}`}>
                 <button type="button" className="results__button" onClick={() => onSelect(result)}>
