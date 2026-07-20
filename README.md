@@ -57,7 +57,14 @@ NEXT_PUBLIC_MAPTILER_KEY=...             # or a MapTiler key
 ```
 
 Deploying to Vercel otherwise needs no configuration — every route prerenders to
-static HTML.
+static HTML, and `vercel.json` pins the framework preset so the build does not
+depend on dashboard settings being right.
+
+If a Vercel project was created against this repo *before* the application
+existed, its framework preset will have been detected as "Other" and the build
+fails with `No Output Directory named "public" found`. The `vercel.json` in this
+repo overrides that. If it persists, set Framework Preset to **Next.js** under
+Project → Settings → Build & Deployment.
 
 ## Data and sources
 
