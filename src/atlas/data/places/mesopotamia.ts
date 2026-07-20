@@ -1,0 +1,180 @@
+import type { Place } from '../../types';
+
+/** Mesopotamia and Persia — the world of Abraham's origins and of the exile. */
+export const MESOPOTAMIA_PLACES: Place[] = [
+  {
+    id: 'ur',
+    name: 'Ur of the Chaldeans',
+    aliases: ['Ur', 'Tell el-Muqayyar'],
+    modernName: 'Tell el-Muqayyar, Iraq',
+    ancientNames: { hebrew: 'אוּר כַּשְׂדִּים', hebrewTranslit: 'Ur Kasdim', other: [{ language: 'Sumerian', form: 'Urim' }] },
+    coordinates: [46.1031, 30.9625],
+    kind: 'city',
+    confidence: 'contested',
+    occupation: { start: -3800, end: -400 },
+    periods: ['patriarchal'],
+    scripture: [
+      { book: 'genesis', chapter: 11, verse: 28, verseEnd: 31 },
+      { book: 'genesis', chapter: 15, verse: 7 },
+      { book: 'nehemiah', chapter: 9, verse: 7 },
+      { book: 'acts', chapter: 7, verse: 2, verseEnd: 4 },
+    ],
+    people: ['terah', 'abraham', 'sarah'],
+    events: ['call-of-abraham'],
+    polities: ['sumer-akkad', 'neo-babylonian'],
+    description:
+      'Abraham\'s birthplace. The standard identification is the great Sumerian city in southern Iraq, excavated by Woolley, with its ziggurat to the moon-god Nanna. A minority position places Ur in the north, near Harran, on the grounds that the family\'s connections are entirely northern, that "of the Chaldeans" is an anachronistic gloss for a first-millennium people, and that a northern Ura is attested in Hittite and Ugaritic texts.',
+    alternatives: [
+      {
+        site: 'Urfa / northern Ura (upper Mesopotamia)',
+        coordinates: [38.7955, 37.1591],
+        argument: 'Keeps Abraham\'s family within the Harran orbit, matching where Genesis sends servants to find wives and where the patriarchal personal names cluster as toponyms.',
+        proponents: 'Gordon; also the long-standing local tradition at Şanlıurfa',
+      },
+    ],
+    archaeology:
+      'Woolley\'s Royal Cemetery produced spectacular third-millennium burials with human retainers. The city was substantial and cosmopolitan in the early second millennium — which suits Genesis, though nothing found there bears on Abraham personally.',
+    sources: [
+      { citation: 'Woolley, Ur of the Chaldees', note: 'The excavation that fixed the southern identification in the public mind.' },
+      { citation: 'Gordon, JNES 17 (1958)', note: 'The principal published case for a northern Ur.' },
+    ],
+  },
+  {
+    id: 'babylon',
+    name: 'Babylon',
+    aliases: ['Babel', 'Bab-ilim'],
+    modernName: 'Hillah, Iraq',
+    ancientNames: { hebrew: 'בָּבֶל', hebrewTranslit: 'Bavel', greek: 'Βαβυλών', other: [{ language: 'Akkadian', form: 'Babili' }] },
+    coordinates: [44.4208, 32.5364],
+    kind: 'capital',
+    confidence: 'certain',
+    occupation: { start: -2300, end: 500 },
+    periods: ['patriarchal', 'judah-alone', 'exile', 'return'],
+    scripture: [
+      { book: 'genesis', chapter: 11, verse: 1, verseEnd: 9 },
+      { book: '2kings', chapter: 24, verse: 10, verseEnd: 17 },
+      { book: 'jeremiah', chapter: 29, verse: 1, verseEnd: 14 },
+      { book: 'daniel', chapter: 4 },
+      { book: 'psalms', chapter: 137 },
+      { book: 'revelation', chapter: 18 },
+    ],
+    people: ['nebuchadnezzar', 'daniel', 'ezekiel', 'jehoiachin', 'belshazzar', 'cyrus'],
+    events: ['fall-of-jerusalem-586', 'fall-of-babylon-539'],
+    polities: ['neo-babylonian', 'achaemenid'],
+    description:
+      'The city to which Judah was deported and which became, for the rest of biblical literature, the name for imperial power set against God. Under Nebuchadnezzar II it was the largest city in the world, with the Ishtar Gate, the processional way and the ziggurat Etemenanki that lies behind the Babel tradition. Cyrus took it in 539 BC essentially without a fight.',
+    archaeology:
+      'Administrative tablets from the palace list rations of oil issued to "Yaukin, king of the land of Yahudu" and his sons — Jehoiachin, the deported king of Judah, named in the Babylonian bureaucratic record. The Babylonian Chronicle records the capture of Jerusalem in 597 BC and dates it precisely. The Al-Yahudu archive documents a Judean settlement in Babylonia over several generations, showing what exile actually looked like: farming, debt, marriage contracts, and a community keeping Yahwistic names.',
+    sources: [
+      { citation: 'Babylonian Chronicle ABC 5 (British Museum BM 21946)', note: 'Dates the first capture of Jerusalem to 2 Adar, 597 BC.' },
+      { citation: 'Jehoiachin ration tablets (Pergamon Museum)', note: 'Name the exiled king of Judah in the palace accounts.' },
+      { citation: 'Pearce & Wunsch, Documents of Judean Exiles and West Semites in Babylonia', note: 'The Al-Yahudu archive.' },
+    ],
+  },
+  {
+    id: 'nineveh',
+    name: 'Nineveh',
+    aliases: ['Ninua'],
+    modernName: 'Mosul, Iraq',
+    ancientNames: { hebrew: 'נִינְוֵה', hebrewTranslit: 'Nineveh', greek: 'Νινευΐ' },
+    coordinates: [43.1522, 36.3597],
+    kind: 'capital',
+    confidence: 'certain',
+    occupation: { start: -6000, end: -600 },
+    periods: ['divided-monarchy', 'judah-alone'],
+    scripture: [
+      { book: 'jonah', chapter: 1, verse: 2 },
+      { book: 'jonah', chapter: 3 },
+      { book: 'nahum', chapter: 1, verse: 1 },
+      { book: '2kings', chapter: 19, verse: 36 },
+      { book: 'matthew', chapter: 12, verse: 41 },
+    ],
+    people: ['jonah', 'sennacherib', 'nahum'],
+    events: ['fall-of-nineveh-612'],
+    polities: ['neo-assyrian'],
+    description:
+      'The Assyrian capital under Sennacherib, and the city Jonah is sent to and Nahum condemns. Assyria was the dominant military power of the eighth and seventh centuries and destroyed the northern kingdom; the horror the prophets express toward Nineveh is proportionate to what Assyrian armies actually did. It fell to a Babylonian and Median coalition in 612 BC and was never rebuilt.',
+    archaeology:
+      'Sennacherib\'s "Palace Without Rival" contained the Lachish reliefs. Ashurbanipal\'s library preserved tens of thousands of cuneiform tablets, including the Epic of Gilgamesh with its flood narrative — the discovery of which in 1872 reshaped the study of Genesis. The Taylor Prism carries Sennacherib\'s own account of his campaign against Hezekiah.',
+    sources: [
+      { citation: 'Taylor Prism (British Museum)', note: 'Sennacherib\'s annals for the 701 BC campaign against Judah.' },
+      { citation: 'Babylonian Chronicle ABC 3', note: 'Records the fall of Nineveh in 612 BC.' },
+    ],
+  },
+  {
+    id: 'susa',
+    name: 'Susa',
+    aliases: ['Shushan'],
+    modernName: 'Shush, Iran',
+    ancientNames: { hebrew: 'שׁוּשַׁן', hebrewTranslit: 'Shushan', greek: 'Σοῦσα' },
+    coordinates: [48.2472, 32.1897],
+    kind: 'capital',
+    confidence: 'certain',
+    occupation: { start: -4200, end: 1300 },
+    periods: ['return'],
+    scripture: [
+      { book: 'esther', chapter: 1, verse: 2 },
+      { book: 'nehemiah', chapter: 1, verse: 1 },
+      { book: 'daniel', chapter: 8, verse: 2 },
+    ],
+    people: ['esther', 'mordecai', 'nehemiah', 'xerxes'],
+    events: [],
+    polities: ['achaemenid'],
+    description:
+      'One of the Persian royal capitals and the setting of Esther. Nehemiah is cupbearer here when he hears of Jerusalem\'s condition. The book of Esther\'s description of the palace layout, court protocol and the postal system matches Persian practice closely enough to indicate real familiarity with the court.',
+    archaeology:
+      'The apadana of Darius I and the palace complex have been excavated; the plan corresponds well to the sequence of courts and gates Esther describes. The Code of Hammurabi stele was found here, carried off as booty from Babylonia.',
+    sources: [],
+  },
+  {
+    id: 'nippur',
+    name: 'Nippur',
+    aliases: ['Chebar canal region'],
+    modernName: 'Nuffar, Iraq',
+    ancientNames: { other: [{ language: 'Sumerian', form: 'Nibru' }] },
+    coordinates: [45.2333, 32.1264],
+    kind: 'city',
+    confidence: 'probable',
+    occupation: { start: -5000, end: 800 },
+    periods: ['exile'],
+    scripture: [
+      { book: 'ezekiel', chapter: 1, verse: 1, verseEnd: 3 },
+      { book: 'ezekiel', chapter: 3, verse: 15 },
+    ],
+    people: ['ezekiel'],
+    events: [],
+    polities: ['neo-babylonian', 'achaemenid'],
+    description:
+      'Ezekiel receives his call "by the river Chebar" among the exiles at Tel-abib. The Chebar is generally identified with the naru kabari, a major canal running past Nippur, which is named in cuneiform documents from the city. This is where the exile was actually lived.',
+    archaeology:
+      'The Murashu archive from Nippur — fifth-century business documents — includes many West Semitic and distinctly Yahwistic personal names, showing a Judean community integrated into the local economy generations after the deportation.',
+    sources: [
+      { citation: 'Murashu archive tablets (University of Pennsylvania Museum)', note: 'Judean names in Persian-period Nippur business records.' },
+    ],
+  },
+  {
+    id: 'carchemish',
+    name: 'Carchemish',
+    aliases: ['Karkemish'],
+    modernName: 'Karkamış, Türkiye / Jarabulus, Syria',
+    ancientNames: { hebrew: 'כַּרְכְּמִישׁ', hebrewTranslit: 'Karkemish' },
+    coordinates: [38.0125, 36.8294],
+    kind: 'city',
+    confidence: 'certain',
+    occupation: { start: -3000, end: -600 },
+    periods: ['judah-alone'],
+    scripture: [
+      { book: 'jeremiah', chapter: 46, verse: 2 },
+      { book: '2chronicles', chapter: 35, verse: 20 },
+      { book: 'isaiah', chapter: 10, verse: 9 },
+    ],
+    people: ['nebuchadnezzar', 'neco'],
+    events: ['battle-of-carchemish-605'],
+    polities: ['neo-assyrian', 'neo-babylonian', 'egypt'],
+    description:
+      'The Euphrates crossing where Nebuchadnezzar destroyed the Egyptian army in 605 BC — the battle that ended Egyptian ambitions in Syria, made Babylon the dominant power, and set in motion the sequence that ended with Jerusalem\'s destruction. Josiah had died at Megiddo four years earlier trying to intercept the Egyptian march to this front.',
+    sources: [
+      { citation: 'Babylonian Chronicle ABC 5', note: 'Contemporary record of the battle and its date.' },
+    ],
+  },
+];

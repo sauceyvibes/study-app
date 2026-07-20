@@ -1,0 +1,900 @@
+/*
+ * Sacred Geography — visual system.
+ *
+ * The reference is a printed scholarly atlas: ink on laid paper, hairline rules,
+ * a restrained two-accent palette, and typography doing the work that colour and
+ * shadow do in a web dashboard. A few rules follow from that and are worth
+ * stating, because they are easy to erode:
+ *
+ *   - Corners are square. 2px is the maximum radius anywhere in this file.
+ *   - There are no drop shadows except one, on the detail panel, where a real
+ *     depth cue earns its place.
+ *   - Accents are oxblood and verdigris, used sparingly and never as gradients.
+ *   - Labels are letterspaced small caps; body copy is a serif at a generous
+ *     measure. Nothing is centred that could be flush left.
+ *
+ * Font stacks are system faces chosen for their old-style figures and warm
+ * serifs. No webfont is loaded: it keeps the app fully self-contained, removes a
+ * render-blocking request, and Iowan/Palatino/Georgia are a better match for an
+ * atlas than most of what a font CDN would serve.
+ */
+
+:root {
+  --paper: #e7ddc6;
+  --paper-deep: #dccfb2;
+  --paper-raised: #f0e8d6;
+  --ink: #23201a;
+  --ink-soft: #5d5546;
+  --ink-faint: #8a7f6b;
+  --rule: #bfae8c;
+  --rule-strong: #8d7c5c;
+  --oxblood: #7b2e2e;
+  --verdigris: #3a615a;
+  --gold: #9d7f42;
+
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, "Times New Roman", serif;
+  --sans: ui-sans-serif, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+  --rail-width: 21rem;
+  --panel-width: 25rem;
+  --timeline-height: 5.5rem;
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #191710;
+    --paper-deep: #12100b;
+    --paper-raised: #232019;
+    --ink: #e8dfc7;
+    --ink-soft: #b3a687;
+    --ink-faint: #7d7359;
+    --rule: #3d3728;
+    --rule-strong: #5c5340;
+    --oxblood: #c06a5c;
+    --verdigris: #6f9c8f;
+    --gold: #c2a05c;
+
+    color-scheme: dark;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Old-style figures where the face offers them: dates set in lining numerals
+   look like data, and this app is full of dates that should read as prose. */
+body {
+  font-variant-numeric: oldstyle-num;
+}
+
+:focus-visible {
+  outline: 2px solid var(--verdigris);
+  outline-offset: 2px;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+a {
+  color: var(--oxblood);
+  text-underline-offset: 0.15em;
+}
+
+/* ── Shared idioms ───────────────────────────────────────────────────────── */
+
+.label {
+  font-family: var(--sans);
+  font-size: 0.6875rem;
+  font-variant-numeric: lining-nums;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.rule {
+  border: 0;
+  border-top: 1px solid var(--rule);
+  margin: 1rem 0;
+}
+
+/* A double rule, as a chapter break in a printed book. */
+.rule-double {
+  border: 0;
+  border-top: 1px solid var(--rule-strong);
+  border-bottom: 1px solid var(--rule);
+  height: 3px;
+  margin: 1.25rem 0;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ── Application shell ───────────────────────────────────────────────────── */
+
+.atlas {
+  display: grid;
+  grid-template-columns: var(--rail-width) 1fr;
+  grid-template-rows: auto 1fr var(--timeline-height);
+  grid-template-areas:
+    "masthead masthead"
+    "rail     map"
+    "rail     timeline";
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.masthead {
+  grid-area: masthead;
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--rule-strong);
+  background: var(--paper-deep);
+}
+
+.masthead__title {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.masthead__subtitle {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-style: italic;
+  color: var(--ink-soft);
+}
+
+.masthead__meta {
+  margin-left: auto;
+}
+
+.rail {
+  grid-area: rail;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid var(--rule-strong);
+  background: var(--paper-deep);
+}
+
+.rail__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 1.25rem 1.5rem;
+}
+
+.map-region {
+  grid-area: map;
+  position: relative;
+  min-height: 0;
+}
+
+.timeline-region {
+  grid-area: timeline;
+  border-top: 1px solid var(--rule-strong);
+  background: var(--paper-deep);
+}
+
+/* ── Mode switch ─────────────────────────────────────────────────────────── */
+
+.mode-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-bottom: 1px solid var(--rule);
+}
+
+.mode-switch__option {
+  padding: 0.7rem 0.5rem;
+  font-family: var(--sans);
+  font-size: 0.6875rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  border-bottom: 2px solid transparent;
+  transition: color 120ms ease, border-color 120ms ease;
+}
+
+.mode-switch__option:hover {
+  color: var(--ink-soft);
+}
+
+.mode-switch__option[aria-selected="true"] {
+  color: var(--ink);
+  border-bottom-color: var(--oxblood);
+}
+
+/* ── Search ──────────────────────────────────────────────────────────────── */
+
+.search {
+  padding: 1rem 1.25rem 0.75rem;
+}
+
+.search__field {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid var(--rule-strong);
+  background: var(--paper-raised);
+  padding: 0.45rem 0.6rem;
+}
+
+.search__input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 0.9375rem;
+  color: var(--ink);
+  background: none;
+  border: none;
+  outline: none;
+}
+
+.search__input::placeholder {
+  color: var(--ink-faint);
+  font-style: italic;
+}
+
+.search__clear {
+  font-family: var(--sans);
+  font-size: 0.6875rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.search__clear:hover {
+  color: var(--oxblood);
+}
+
+.search__hint {
+  margin: 0.5rem 0 0;
+  font-size: 0.75rem;
+  font-style: italic;
+  color: var(--ink-faint);
+}
+
+.results {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+}
+
+.results__item + .results__item {
+  border-top: 1px solid var(--rule);
+}
+
+.results__button {
+  display: block;
+  width: 100%;
+  padding: 0.55rem 0;
+  text-align: left;
+}
+
+.results__button:hover .results__title {
+  color: var(--oxblood);
+}
+
+.results__title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.9375rem;
+  transition: color 120ms ease;
+}
+
+.results__kind {
+  font-family: var(--sans);
+  font-size: 0.5625rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  border: 1px solid var(--rule);
+  padding: 0.05rem 0.3rem;
+  flex-shrink: 0;
+}
+
+.results__subtitle {
+  font-size: 0.8125rem;
+  color: var(--ink-soft);
+}
+
+.results__matched {
+  font-size: 0.75rem;
+  font-style: italic;
+  color: var(--ink-faint);
+}
+
+/* ── Book navigator ──────────────────────────────────────────────────────── */
+
+.books__division {
+  margin: 1.25rem 0 0.4rem;
+}
+
+.books__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.books__button {
+  padding: 0.2rem 0.45rem;
+  font-size: 0.8125rem;
+  border: 1px solid transparent;
+  transition: border-color 120ms ease, color 120ms ease;
+}
+
+.books__button:hover {
+  border-color: var(--rule);
+}
+
+.books__button[aria-pressed="true"] {
+  border-color: var(--oxblood);
+  color: var(--oxblood);
+}
+
+.chapters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+}
+
+.chapters__button {
+  min-width: 1.85rem;
+  padding: 0.15rem 0.3rem;
+  font-family: var(--sans);
+  font-size: 0.75rem;
+  font-variant-numeric: lining-nums;
+  text-align: center;
+  border: 1px solid var(--rule);
+  color: var(--ink-soft);
+}
+
+.chapters__button:hover {
+  border-color: var(--rule-strong);
+  color: var(--ink);
+}
+
+.chapters__button[aria-pressed="true"] {
+  background: var(--oxblood);
+  border-color: var(--oxblood);
+  color: var(--paper-raised);
+}
+
+/* A chapter we have not indexed is shown but visibly unfilled, so the user can
+   tell the difference between "nothing here" and "we haven't done this yet". */
+.chapters__button--unindexed {
+  color: var(--ink-faint);
+  border-style: dashed;
+}
+
+/* ── Timeline ────────────────────────────────────────────────────────────── */
+
+.timeline {
+  position: relative;
+  height: 100%;
+  padding: 0.5rem 1.5rem 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.timeline__header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+}
+
+.timeline__year {
+  font-size: 1.125rem;
+  font-variant-numeric: lining-nums;
+  letter-spacing: 0.02em;
+}
+
+.timeline__period {
+  font-style: italic;
+  color: var(--ink-soft);
+  font-size: 0.875rem;
+}
+
+.timeline__nudge {
+  margin-left: auto;
+  display: flex;
+  gap: 0.25rem;
+}
+
+.timeline__nudge button {
+  font-family: var(--sans);
+  font-size: 0.6875rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  border: 1px solid var(--rule);
+  padding: 0.1rem 0.4rem;
+}
+
+.timeline__nudge button:hover {
+  color: var(--ink);
+  border-color: var(--rule-strong);
+}
+
+.timeline__track {
+  position: relative;
+  height: 1.5rem;
+}
+
+/* The period bands sit behind the slider as a stratigraphic column would in a
+   section drawing — alternating tints, hairline divisions, labels on hover. */
+.timeline__bands {
+  position: absolute;
+  inset: 0 0 0.55rem;
+  display: flex;
+  border: 1px solid var(--rule);
+  overflow: hidden;
+}
+
+.timeline__band {
+  position: relative;
+  border-right: 1px solid var(--rule);
+  background: transparent;
+  transition: background-color 120ms ease;
+}
+
+.timeline__band:last-child {
+  border-right: none;
+}
+
+.timeline__band:nth-child(odd) {
+  background: color-mix(in srgb, var(--rule) 22%, transparent);
+}
+
+.timeline__band:hover {
+  background: color-mix(in srgb, var(--verdigris) 24%, transparent);
+}
+
+.timeline__band[data-current="true"] {
+  background: color-mix(in srgb, var(--oxblood) 26%, transparent);
+}
+
+.timeline__slider {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  margin: 0;
+  appearance: none;
+  background: none;
+  cursor: ew-resize;
+}
+
+.timeline__slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 3px;
+  height: 1.5rem;
+  background: var(--oxblood);
+  border: none;
+  border-radius: 0;
+  cursor: ew-resize;
+}
+
+.timeline__slider::-moz-range-thumb {
+  width: 3px;
+  height: 1.5rem;
+  background: var(--oxblood);
+  border: none;
+  border-radius: 0;
+  cursor: ew-resize;
+}
+
+.timeline__scale {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--sans);
+  font-size: 0.625rem;
+  font-variant-numeric: lining-nums;
+  letter-spacing: 0.08em;
+  color: var(--ink-faint);
+}
+
+/* ── Detail panel ────────────────────────────────────────────────────────── */
+
+.panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: var(--panel-width);
+  max-width: 100%;
+  overflow-y: auto;
+  padding: 1.25rem 1.5rem 3rem;
+  background: var(--paper-raised);
+  border-left: 1px solid var(--rule-strong);
+  box-shadow: -12px 0 28px -22px rgb(0 0 0 / 0.5);
+  z-index: 5;
+}
+
+.panel__close {
+  float: right;
+  font-family: var(--sans);
+  font-size: 0.6875rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.panel__close:hover {
+  color: var(--oxblood);
+}
+
+.panel__name {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.panel__modern {
+  margin: 0.15rem 0 0;
+  font-style: italic;
+  color: var(--ink-soft);
+}
+
+.panel__ancient {
+  margin: 0.6rem 0 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.15rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+.panel__ancient dt {
+  font-family: var(--sans);
+  font-size: 0.625rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  padding-top: 0.28em;
+}
+
+.panel__ancient dd {
+  margin: 0;
+}
+
+/* Hebrew and Greek deserve a size bump — at body size the pointing is illegible. */
+.panel__script {
+  font-size: 1.15rem;
+  line-height: 1.4;
+}
+
+.panel__section {
+  margin-top: 1.25rem;
+}
+
+.panel__heading {
+  margin: 0 0 0.4rem;
+  font-family: var(--sans);
+  font-size: 0.6875rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.panel__prose {
+  margin: 0;
+  font-size: 0.9375rem;
+}
+
+.panel__prose + .panel__prose {
+  margin-top: 0.6rem;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.chips__item button,
+.chips__item span {
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.8125rem;
+  border: 1px solid var(--rule);
+}
+
+.chips__item button:hover {
+  border-color: var(--oxblood);
+  color: var(--oxblood);
+}
+
+.refs {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.875rem;
+  font-variant-numeric: lining-nums;
+  columns: 2;
+  column-gap: 1rem;
+}
+
+.sources {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8125rem;
+}
+
+.sources li {
+  padding-left: 1rem;
+  text-indent: -1rem;
+  margin-bottom: 0.5rem;
+}
+
+.sources cite {
+  font-style: normal;
+  font-weight: 600;
+}
+
+/* ── Confidence ──────────────────────────────────────────────────────────── */
+
+.confidence {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--sans);
+  font-size: 0.625rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.confidence__mark {
+  width: 0.5rem;
+  height: 0.5rem;
+  border: 1px solid currentColor;
+}
+
+.confidence--certain { color: var(--verdigris); }
+.confidence--certain .confidence__mark { background: currentColor; }
+.confidence--probable { color: var(--verdigris); }
+.confidence--probable .confidence__mark { background: color-mix(in srgb, currentColor 45%, transparent); }
+.confidence--contested { color: var(--oxblood); }
+.confidence--conjectural { color: var(--oxblood); }
+.confidence--conjectural .confidence__mark { border-style: dashed; }
+.confidence--unlocated { color: var(--ink-faint); }
+.confidence--unlocated .confidence__mark { border-style: dotted; }
+
+.alternative {
+  border-left: 2px solid var(--oxblood);
+  padding-left: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+
+.alternative__site {
+  margin: 0;
+  font-weight: 600;
+  font-size: 0.9375rem;
+}
+
+.alternative__argument {
+  margin: 0.15rem 0 0;
+  font-size: 0.875rem;
+}
+
+.alternative__proponents {
+  margin: 0.15rem 0 0;
+  font-size: 0.8125rem;
+  font-style: italic;
+  color: var(--ink-soft);
+}
+
+/* ── Map furniture ───────────────────────────────────────────────────────── */
+
+.maplibregl-map {
+  font-family: var(--serif);
+}
+
+.map-notice {
+  position: absolute;
+  left: 0.75rem;
+  bottom: 0.75rem;
+  max-width: 22rem;
+  padding: 0.5rem 0.65rem;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  background: color-mix(in srgb, var(--paper-raised) 92%, transparent);
+  border: 1px solid var(--rule);
+  color: var(--ink-soft);
+  z-index: 4;
+}
+
+.map-legend {
+  position: absolute;
+  right: 0.75rem;
+  top: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  background: color-mix(in srgb, var(--paper-raised) 94%, transparent);
+  border: 1px solid var(--rule);
+  z-index: 4;
+}
+
+.map-legend__list {
+  list-style: none;
+  margin: 0.4rem 0 0;
+  padding: 0;
+  font-size: 0.8125rem;
+}
+
+.map-legend__list li {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.map-legend__swatch {
+  width: 0.85rem;
+  height: 0.5rem;
+  border: 1px solid var(--rule-strong);
+  flex-shrink: 0;
+}
+
+.map-status {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 0.5rem;
+  text-align: center;
+  padding: 2rem;
+  background: var(--paper);
+  z-index: 6;
+}
+
+.map-status__title {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+.map-status__body {
+  margin: 0;
+  max-width: 28rem;
+  color: var(--ink-soft);
+  font-size: 0.9375rem;
+}
+
+/* ── Toggles ─────────────────────────────────────────────────────────────── */
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.toggle input {
+  appearance: none;
+  width: 0.85rem;
+  height: 0.85rem;
+  margin: 0;
+  border: 1px solid var(--rule-strong);
+  background: var(--paper-raised);
+  cursor: pointer;
+}
+
+.toggle input:checked {
+  background: var(--oxblood);
+  border-color: var(--oxblood);
+}
+
+.empty {
+  margin: 1rem 0;
+  padding: 0.85rem;
+  border: 1px dashed var(--rule-strong);
+  font-size: 0.875rem;
+  color: var(--ink-soft);
+}
+
+.empty p {
+  margin: 0;
+}
+
+.empty p + p {
+  margin-top: 0.5rem;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 60rem) {
+  .atlas {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "masthead"
+      "map"
+      "timeline"
+      "rail";
+  }
+
+  .rail {
+    border-right: none;
+    border-top: 1px solid var(--rule-strong);
+    max-height: 45dvh;
+  }
+
+  .map-region {
+    min-height: 40dvh;
+  }
+
+  /* The panel becomes a sheet over the map rather than a column beside it. */
+  .panel {
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid var(--rule-strong);
+    top: 25%;
+  }
+
+  .map-legend {
+    display: none;
+  }
+
+  .refs {
+    columns: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
