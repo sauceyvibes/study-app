@@ -258,7 +258,6 @@ a {
   gap: 9px;
   border: 1.5px solid var(--color-neutral-400);
   background: var(--color-neutral-100);
-  border-radius: 999px;
   padding: 8px 14px;
 }
 
@@ -427,7 +426,7 @@ a {
   font-size: 13.5px;
   color: var(--color-neutral-800);
   border: 1px solid transparent;
-  border-radius: 999px;
+  border-radius: 5px;
   transition: border-color 120ms ease, color 120ms ease;
 }
 
@@ -539,7 +538,7 @@ a {
   font-size: 13px;
   color: var(--color-neutral-800);
   border: 1px solid var(--color-neutral-400);
-  border-radius: 999px;
+  border-radius: 5px;
   transition: border-color 120ms ease, color 120ms ease;
 }
 
@@ -705,7 +704,7 @@ a {
   padding: 8px 14px;
   background: color-mix(in srgb, var(--color-bg) 90%, transparent);
   border: 1px solid var(--color-neutral-500);
-  border-radius: 999px;
+  border-radius: 5px;
   box-shadow: var(--shadow-sm);
   font-size: 11px;
   color: var(--color-neutral-700);
@@ -1031,7 +1030,7 @@ a {
   letter-spacing: 0.06em;
   color: var(--color-neutral-700);
   border: 1px solid var(--color-neutral-400);
-  border-radius: 999px;
+  border-radius: 5px;
   padding: 3px 12px;
   background: var(--color-neutral-100);
   transition: border-color 120ms ease;
