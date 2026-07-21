@@ -308,6 +308,7 @@ a {
   padding: 0;
   max-height: 230px;
   overflow-y: auto;
+  border: 2px solid var(--color-neutral-500);
 }
 
 .results__item {
@@ -317,9 +318,10 @@ a {
 .results__button {
   display: block;
   width: 100%;
-  padding: 9px 0;
+  padding: 9px;
   text-align: left;
   transition: opacity 120ms ease;
+  background: var(--color-neutral-200);
 }
 
 .results__button:hover {
