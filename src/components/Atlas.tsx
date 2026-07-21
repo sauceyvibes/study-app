@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useAtlas } from '@/state/atlas-store';
 import { SearchPanel } from './SearchPanel';
@@ -43,6 +43,10 @@ const AtlasMap = dynamic(() => import('./map/AtlasMap').then((m) => m.AtlasMap),
  * showing a route from a period whose cities have already been filtered away.
  */
 export function Atlas() {
+  // Purely presentational, so it lives here rather than in the shared store:
+  // whether the territory legend is shrunk to its badge.
+  const [legendCollapsed, setLegendCollapsed] = useState(false);
+
   const mode = useAtlas((s) => s.mode);
   const year = useAtlas((s) => s.year);
   const bookId = useAtlas((s) => s.bookId);
@@ -243,24 +247,52 @@ export function Atlas() {
             <PlateGrain />
           </div>
 
-          {polities.length > 0 && (
-            <div className="map-legend">
-              <p className="map-legend__title">Territory</p>
-              <ul className="map-legend__list">
-                {polities.map((polity) => (
-                  <li key={polity.id}>
-                    <span
-                      className="map-legend__swatch"
-                      style={{ background: polity.color, borderColor: polity.color }}
-                      aria-hidden="true"
-                    />
-                    {polity.name}
-                  </li>
-                ))}
-              </ul>
-              <p className="map-legend__note">Zones of control, not surveyed borders.</p>
-            </div>
-          )}
+          {polities.length > 0 &&
+            (legendCollapsed ? (
+              <button
+                type="button"
+                className="map-legend map-legend--collapsed"
+                onClick={() => setLegendCollapsed(false)}
+                aria-label="Show the territory legend"
+                title="Show the territory legend"
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+                  <path d="M8 1.5 1.5 5 8 8.5 14.5 5 8 1.5Z" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+                  <path d="M2 8 8 11 14 8" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M2 11 8 14 14 11" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            ) : (
+              <div className="map-legend">
+                <div className="map-legend__header">
+                  <p className="map-legend__title">Territory</p>
+                  <button
+                    type="button"
+                    className="map-legend__collapse"
+                    onClick={() => setLegendCollapsed(true)}
+                    aria-label="Collapse the legend"
+                    title="Collapse the legend"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+                      <line x1="3" y1="7" x2="11" y2="7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                </div>
+                <ul className="map-legend__list">
+                  {polities.map((polity) => (
+                    <li key={polity.id}>
+                      <span
+                        className="map-legend__swatch"
+                        style={{ background: polity.color, borderColor: polity.color }}
+                        aria-hidden="true"
+                      />
+                      {polity.name}
+                    </li>
+                  ))}
+                </ul>
+                <p className="map-legend__note">Zones of control, not surveyed borders.</p>
+              </div>
+            ))}
         </div>
 
         <ConfidenceKey />

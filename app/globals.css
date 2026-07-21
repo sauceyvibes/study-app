@@ -696,6 +696,54 @@ a {
   line-height: 1.4;
 }
 
+/* Title row with the collapse (–) button aligned to its right. */
+.map-legend__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 7px;
+}
+
+.map-legend__header .map-legend__title {
+  margin: 0;
+}
+
+/* The collapse and re-open buttons override the global filled-button background
+   so they read as icon controls; colour comes from the existing tokens. */
+.map-legend__collapse {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  flex-shrink: 0;
+  color: var(--color-neutral-600);
+  background: none;
+  border-radius: 999px;
+}
+
+.map-legend__collapse:hover {
+  color: var(--color-accent-700);
+}
+
+/* Collapsed, the card keeps its own background and border but shrinks to a small
+   round badge holding a layers glyph. It is itself the button that re-opens it. */
+.map-legend--collapsed {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  max-width: none;
+  border-radius: 999px;
+  color: var(--color-neutral-700);
+}
+
+.map-legend--collapsed:hover {
+  color: var(--color-accent-700);
+}
+
 /* The floating confidence key, a pill bar over the plate's lower left. */
 .conf-key {
   position: absolute;

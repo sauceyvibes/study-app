@@ -92,6 +92,11 @@ export function AtlasMap({
 
     map.touchZoomRotate.disableRotation();
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-left');
+    // Fullscreen sits under the zoom buttons, top-left, so it stays clear of the
+    // legend in the top-right corner. It promotes the map container element, so
+    // the plate fills the screen for a closer look. (In an embedded iframe the
+    // browser may block the fullscreen request; at the top level it works.)
+    map.addControl(new maplibregl.FullscreenControl(), 'top-left');
     map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-right');
 
     // The tile providers (Stadia, Stamen, OpenMapTiles, OpenStreetMap) require
