@@ -1,4 +1,4 @@
-# Sacred Geography 
+# Sacred Geography
 
 An interactive historical atlas of the Bible: places, people, routes and empires
 from the patriarchal age to the apostolic mission, with the scholarly uncertainty
