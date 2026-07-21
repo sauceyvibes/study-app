@@ -139,20 +139,7 @@ export function Atlas() {
 
   return (
     <div className="atlas">
-      <header className="masthead">
-        <div className="masthead__brand">
-          <CompassRose className="masthead__rose" size={34} />
-          <div>
-            <h1 className="masthead__title">Sacred Geography</h1>
-            <p className="masthead__subtitle">An historical atlas of the biblical world</p>
-          </div>
-        </div>
-        <div className="masthead__meta">
-          <p className="masthead__edition">First Edition · {ATLAS_COVERAGE.version}</p>
-          <p className="masthead__tagline">Places · People · Routes · Empires</p>
-        </div>
-      </header>
-
+      
       <div className="rail">
         <div className="mode-switch" role="tablist" aria-label="Exploration mode">
           <button
