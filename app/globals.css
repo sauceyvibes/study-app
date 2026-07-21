@@ -1173,23 +1173,24 @@ a {
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 
 @media (max-width: 60rem) {
+  /* One column that scrolls with the page, rather than a fixed-height shell with
+     a cramped internal rail scrollbox. Rows size to their content and the map
+     gets an explicit height so MapLibre has something to fill. */
   .atlas {
     grid-template-columns: 1fr;
-    grid-template-rows: minmax(0, 1fr) auto auto;
+    grid-template-rows: auto auto auto;
     grid-template-areas:
       'map'
       'time'
       'rail';
-  }
-
-  .rail {
-    border-right: none;
-    border-top: 2px solid var(--color-neutral-800);
-    max-height: 45dvh;
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
   }
 
   .map-region {
-    min-height: 40dvh;
+    height: 55dvh;
+    min-height: 300px;
     padding: 8px;
   }
 
@@ -1197,14 +1198,33 @@ a {
     inset: 8px;
   }
 
+  /* Let the rail flow at its natural height instead of scrolling inside itself. */
+  .rail {
+    border-right: none;
+    border-top: 2px solid var(--color-neutral-800);
+    min-height: auto;
+  }
+
+  .rail__scroll {
+    flex: none;
+    overflow: visible;
+  }
+
+  /* The detail panel becomes a full-screen sheet rather than a side column. */
   .panel {
+    position: fixed;
+    inset: 0;
+    top: 8%;
     width: 100%;
     border-left: none;
     border-top: 2px solid var(--color-neutral-800);
-    top: 25%;
+    z-index: 20;
   }
 
-  .map-legend {
+  /* Chrome that would crowd the small map. The legend hides; the keyless/book
+     notices are non-essential here (and the keyless one is gone in production). */
+  .map-legend,
+  .map-notice {
     display: none;
   }
 
@@ -1218,6 +1238,25 @@ a {
 
   .timeline {
     padding: 10px 16px 12px;
+  }
+
+  /* Wrap the year, period and nudge buttons onto two lines if they don't fit,
+     instead of colliding and clipping to "BC" / "yr". */
+  .timeline__header {
+    flex-wrap: wrap;
+    gap: 6px 12px;
+  }
+
+  .timeline__year {
+    font-size: 20px;
+  }
+
+  .timeline__period {
+    font-size: 13px;
+  }
+
+  .timeline__nudge button {
+    white-space: nowrap;
   }
 }
 
