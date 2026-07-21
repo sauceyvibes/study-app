@@ -6,6 +6,7 @@ import { useAtlas } from '@/state/atlas-store';
 import { SearchPanel } from './SearchPanel';
 import { BookNavigator } from './BookNavigator';
 import { PlacePanel } from './PlacePanel';
+import { PersonPanel } from './PersonPanel';
 import { Timeline } from './Timeline';
 import {
   placesAtYear,
@@ -33,6 +34,36 @@ const AtlasMap = dynamic(() => import('./map/AtlasMap').then((m) => m.AtlasMap),
   ),
 });
 
+/** Route-mode labels and swatches for the legend. */
+type RouteMode = 'land' | 'sea' | 'inferred';
+
+const ROUTE_LABEL: Record<RouteMode, string> = {
+  land: 'Overland',
+  sea: 'By sea',
+  inferred: 'Inferred link',
+};
+
+/**
+ * A short line drawn exactly as the map draws that route mode — solid terracotta
+ * for land, dashed teal for sea, dotted neutral for an inferred connection. The
+ * colours and dash patterns are the same values the map's route layers use, so
+ * the key is a true statement about the plate, not an approximation of it.
+ */
+function RouteSwatch({ mode }: { mode: RouteMode }) {
+  const stroke =
+    mode === 'sea'
+      ? 'var(--color-accent-2-600)'
+      : mode === 'inferred'
+        ? 'var(--color-neutral-600)'
+        : 'var(--color-accent-700)';
+  const dash = mode === 'sea' ? '6 3' : mode === 'inferred' ? '2 3' : undefined;
+  return (
+    <svg className="map-legend__route" width="22" height="8" viewBox="0 0 22 8" aria-hidden="true">
+      <line x1="1" y1="4" x2="21" y2="4" stroke={stroke} strokeWidth="2" strokeLinecap="round" strokeDasharray={dash} />
+    </svg>
+  );
+}
+
 /**
  * The application shell.
  *
@@ -52,6 +83,7 @@ export function Atlas() {
   const bookId = useAtlas((s) => s.bookId);
   const chapter = useAtlas((s) => s.chapter);
   const selectedPlaceId = useAtlas((s) => s.selectedPlaceId);
+  const selectedPersonId = useAtlas((s) => s.selectedPersonId);
   const focusPlaceIds = useAtlas((s) => s.focusPlaceIds);
   const activeJourneyIds = useAtlas((s) => s.activeJourneyIds);
   const showPolities = useAtlas((s) => s.showPolities);
@@ -62,6 +94,7 @@ export function Atlas() {
   const selectBook = useAtlas((s) => s.selectBook);
   const setChapter = useAtlas((s) => s.setChapter);
   const selectPlace = useAtlas((s) => s.selectPlace);
+  const selectPerson = useAtlas((s) => s.selectPerson);
   const focusPlaces = useAtlas((s) => s.focusPlaces);
   const toggleJourney = useAtlas((s) => s.toggleJourney);
   const togglePolities = useAtlas((s) => s.togglePolities);
@@ -101,6 +134,15 @@ export function Atlas() {
 
   const polities = useMemo(() => (showPolities ? politiesAtYear(year) : []), [showPolities, year]);
 
+  // Which travel modes are actually drawn right now, so the legend explains the
+  // lines the reader is looking at and nothing else. The legend appears whenever
+  // there is territory or a route on the plate to decode.
+  const routeModes = useMemo(
+    () => (['land', 'sea', 'inferred'] as const).filter((m) => journeys.some((j) => j.legs.some((l) => l.mode === m))),
+    [journeys],
+  );
+  const showLegend = polities.length > 0 || routeModes.length > 0;
+
   // Choosing a book (or chapter) re-frames the map around that book's places —
   // picking Acts must carry the reader to the Aegean, not leave them parked
   // over the Levant with the routes running off the edge of the plate. Keyed on
@@ -134,12 +176,21 @@ export function Atlas() {
         return;
       }
 
-      // People, events and journeys frame their places without opening a panel:
-      // the subject is the set of locations, not any single one of them.
+      // A person frames their cities and opens their pop-up — the biography is
+      // the point of searching a figure, not any one of the dots.
+      if (result.kind === 'person') {
+        selectPlace(null);
+        focusPlaces(result.placeIds);
+        selectPerson(result.id);
+        return;
+      }
+
+      // Events and journeys frame their places without opening a panel: the
+      // subject is the set of locations, not any single one of them.
       selectPlace(null);
       focusPlaces(result.placeIds);
     },
-    [selectPlace, focusPlaces, selectBook, setMode],
+    [selectPlace, selectPerson, focusPlaces, selectBook, setMode],
   );
 
   return (
@@ -253,14 +304,14 @@ export function Atlas() {
             <PlateGrain />
           </div>
 
-          {polities.length > 0 &&
+          {showLegend &&
             (legendCollapsed ? (
               <button
                 type="button"
                 className="map-legend map-legend--collapsed"
                 onClick={() => setLegendCollapsed(false)}
-                aria-label="Show the territory legend"
-                title="Show the territory legend"
+                aria-label="Show the map key"
+                title="Show the map key"
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
                   <path d="M8 1.5 1.5 5 8 8.5 14.5 5 8 1.5Z" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
@@ -271,32 +322,52 @@ export function Atlas() {
             ) : (
               <div className="map-legend">
                 <div className="map-legend__header">
-                  <p className="map-legend__title">Territory</p>
+                  <p className="map-legend__title">Map key</p>
                   <button
                     type="button"
                     className="map-legend__collapse"
                     onClick={() => setLegendCollapsed(true)}
-                    aria-label="Collapse the legend"
-                    title="Collapse the legend"
+                    aria-label="Collapse the map key"
+                    title="Collapse the map key"
                   >
                     <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
                       <line x1="3" y1="7" x2="11" y2="7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
                     </svg>
                   </button>
                 </div>
-                <ul className="map-legend__list">
-                  {polities.map((polity) => (
-                    <li key={polity.id}>
-                      <span
-                        className="map-legend__swatch"
-                        style={{ background: polity.color, borderColor: polity.color }}
-                        aria-hidden="true"
-                      />
-                      {polity.name}
-                    </li>
-                  ))}
-                </ul>
-                <p className="map-legend__note">Zones of control, not surveyed borders.</p>
+
+                {routeModes.length > 0 && (
+                  <div className="map-legend__group">
+                    <p className="map-legend__subtitle">Routes</p>
+                    <ul className="map-legend__list">
+                      {routeModes.map((mode) => (
+                        <li key={mode}>
+                          <RouteSwatch mode={mode} />
+                          {ROUTE_LABEL[mode]}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {polities.length > 0 && (
+                  <div className="map-legend__group">
+                    <p className="map-legend__subtitle">Territory</p>
+                    <ul className="map-legend__list">
+                      {polities.map((polity) => (
+                        <li key={polity.id}>
+                          <span
+                            className="map-legend__swatch"
+                            style={{ background: polity.color, borderColor: polity.color }}
+                            aria-hidden="true"
+                          />
+                          {polity.name}
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="map-legend__note">Zones of control, not surveyed borders.</p>
+                  </div>
+                )}
               </div>
             ))}
         </div>
@@ -308,6 +379,18 @@ export function Atlas() {
             placeId={selectedPlaceId}
             onClose={() => selectPlace(null)}
             onSelectPlace={selectPlace}
+            onSelectPerson={selectPerson}
+          />
+        )}
+
+        {selectedPersonId && (
+          <PersonPanel
+            personId={selectedPersonId}
+            onClose={() => selectPerson(null)}
+            onSelectPlace={(id) => {
+              selectPlace(id);
+              focusPlaces([id]);
+            }}
           />
         )}
 

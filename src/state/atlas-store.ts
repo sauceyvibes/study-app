@@ -28,6 +28,8 @@ interface AtlasState {
   /** Null means "the whole book"; a number narrows to one chapter. */
   chapter: number | null;
   selectedPlaceId: string | null;
+  /** The person whose pop-up is open, or null. Independent of the place panel. */
+  selectedPersonId: string | null;
   /** Place ids the map should frame, e.g. after a person search. */
   focusPlaceIds: string[];
   /** Journey ids drawn as routes. */
@@ -40,6 +42,7 @@ interface AtlasState {
   selectBook: (bookId: string, chapter?: number | null) => void;
   setChapter: (chapter: number | null) => void;
   selectPlace: (placeId: string | null) => void;
+  selectPerson: (personId: string | null) => void;
   focusPlaces: (placeIds: string[]) => void;
   toggleJourney: (journeyId: string) => void;
   setJourneys: (journeyIds: string[]) => void;
@@ -59,6 +62,7 @@ export const useAtlas = create<AtlasState>((set, get) => ({
   bookId: null,
   chapter: null,
   selectedPlaceId: null,
+  selectedPersonId: null,
   focusPlaceIds: [],
   activeJourneyIds: [],
   showPolities: true,
@@ -78,7 +82,7 @@ export const useAtlas = create<AtlasState>((set, get) => ({
     const { start, end } = meta.narrativeRange;
     const midpoint = clampYear((start + (end ?? start)) / 2);
 
-    set({ mode: 'book', bookId, chapter, year: midpoint, selectedPlaceId: null });
+    set({ mode: 'book', bookId, chapter, year: midpoint, selectedPlaceId: null, selectedPersonId: null });
   },
 
   setChapter: (chapter) => {
@@ -90,7 +94,11 @@ export const useAtlas = create<AtlasState>((set, get) => ({
     set({ chapter });
   },
 
-  selectPlace: (placeId) => set({ selectedPlaceId: placeId }),
+  // Selecting a place also dismisses any open person pop-up, so a click on the
+  // map never leaves the modal floating over an unrelated place.
+  selectPlace: (placeId) => set({ selectedPlaceId: placeId, selectedPersonId: null }),
+
+  selectPerson: (personId) => set({ selectedPersonId: personId }),
 
   focusPlaces: (placeIds) => set({ focusPlaceIds: placeIds }),
 

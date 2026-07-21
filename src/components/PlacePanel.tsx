@@ -1,14 +1,32 @@
 'use client';
 
-import type { Confidence, Place } from '@/atlas/types';
+import type { Confidence, Place, ScriptureRef } from '@/atlas/types';
 import { resolveEvents, resolvePeople, resolvePolities, PLACE_BY_ID } from '@/atlas/corpus';
-import { formatScriptureRef, formatYear, formatYearRange } from '@/atlas/search';
+import { formatYear, formatYearRange } from '@/atlas/search';
+import { ScriptureLink } from './ScriptureLink';
 
 interface PlacePanelProps {
   placeId: string;
   onClose: () => void;
   onSelectPlace: (placeId: string) => void;
+  onSelectPerson: (personId: string) => void;
 }
+
+/** Distinct references in canonical order-ish, capped so a much-named place does
+ *  not bury the panel under a hundred chapter chips. */
+function distinctRefs(refs: ScriptureRef[]): ScriptureRef[] {
+  const seen = new Set<string>();
+  const out: ScriptureRef[] = [];
+  for (const ref of refs) {
+    const key = `${ref.book}-${ref.chapter}-${ref.verse ?? ''}-${ref.verseEnd ?? ''}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(ref);
+  }
+  return out;
+}
+
+const MAX_REFS = 60;
 
 const CONFIDENCE_TEXT: Record<Confidence, string> = {
   certain: 'Identification certain',
@@ -35,7 +53,7 @@ const CONFIDENCE_EXPLANATION: Record<Confidence, string> = {
  * An atlas that presents Ai at et-Tell without saying that the site was a ruin a
  * thousand years before Joshua is not being useful, it is being tidy.
  */
-export function PlacePanel({ placeId, onClose, onSelectPlace }: PlacePanelProps) {
+export function PlacePanel({ placeId, onClose, onSelectPlace, onSelectPerson }: PlacePanelProps) {
   const place = PLACE_BY_ID.get(placeId);
 
   if (!place) {
@@ -110,10 +128,15 @@ export function PlacePanel({ placeId, onClose, onSelectPlace }: PlacePanelProps)
       {place.scripture.length > 0 && (
         <section className="panel__section">
           <h3 className="panel__heading">References</h3>
-          {/* One flowing line, as a printed index would set it. */}
-          <p className="panel__refs">
-            {place.scripture.map((ref) => formatScriptureRef(ref)).join(' · ')}
-          </p>
+          {/* Each reference opens in Logos; resting on one previews the chapter. */}
+          <div className="scripture-refs">
+            {distinctRefs(place.scripture)
+              .slice(0, MAX_REFS)
+              .map((ref) => (
+                <ScriptureLink key={`${ref.book}-${ref.chapter}-${ref.verse ?? ''}`} reference={ref} />
+              ))}
+          </div>
+          <p className="scripture-refs__hint">Opens the passage in Logos · hover for a summary</p>
         </section>
       )}
 
@@ -123,7 +146,13 @@ export function PlacePanel({ placeId, onClose, onSelectPlace }: PlacePanelProps)
           <ul className="chips">
             {people.map((person) => (
               <li className="chips__item" key={person.id}>
-                <span title={person.role}>{person.name}</span>
+                <button
+                  type="button"
+                  onClick={() => onSelectPerson(person.id)}
+                  title={`${person.role} — open`}
+                >
+                  {person.name}
+                </button>
               </li>
             ))}
           </ul>

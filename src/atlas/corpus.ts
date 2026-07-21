@@ -98,6 +98,17 @@ export function placesForPerson(personId: string): Place[] {
   return resolvePlaces(ordered);
 }
 
+/**
+ * Every datable event a person takes part in, earliest first.
+ *
+ * Read straight off `HistoricalEvent.people`, so the person panel and the timeline
+ * are drawing on the same links rather than a second, hand-kept list that could
+ * drift from it.
+ */
+export function eventsForPerson(personId: string): HistoricalEvent[] {
+  return EVENTS.filter((e) => e.people.includes(personId)).sort((a, b) => a.year - b.year);
+}
+
 /** Resolve a list of ids to entities, silently dropping ids that do not exist. */
 export function resolvePlaces(ids: readonly string[]): Place[] {
   return ids.map((id) => PLACE_BY_ID.get(id)).filter((p): p is Place => p !== undefined);

@@ -22,7 +22,19 @@ chapter.
 **Search that understands the domain.** Modern names, ancient names, Hebrew and
 Greek in script or transliteration, aliases, people, events, competing site
 identifications, and scripture references (`Acts 16`, `1 Kings 12:28`, `Jn 4`).
-Searching a person frames every city they are attested in.
+Searching a person frames every city they are attested in and opens a short
+profile — description, the places they appear at, and the datable events they
+take part in.
+
+**Every reference opens in Logos.** A place's chapter and verse references are
+links into [Logos Bible Software](https://www.logos.com/) (via `ref.ly`, which
+hands off to the desktop, mobile or web reader). Rest on one for half a second
+and a card summarises what happens in the chapter and which places it names.
+
+**A key that matches the plate.** The floating map key decodes both the territory
+washes and the route lines — overland, by sea, and inferred connections drawn
+exactly as the map draws them — and it rides along into fullscreen, where the
+confidence key stays pinned in the lower corner too.
 
 **Uncertainty as a first-class citizen.** Every identification carries a
 confidence rating, and a place cannot be marked *contested* without naming the
@@ -126,7 +138,7 @@ inscription or excavation report, the entry says which.
 npm test
 ```
 
-68 tests. The most valuable are the corpus integrity checks: the data files are
+77 tests. The most valuable are the corpus integrity checks: the data files are
 hand-written, so the realistic failure is not a logic bug but a typo in an id —
 a journey leg pointing at a site that does not exist, a chapter index referencing
 a chapter the book does not have. Those would fail silently at runtime as an
