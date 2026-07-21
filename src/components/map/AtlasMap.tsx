@@ -13,10 +13,15 @@ interface AtlasMapProps {
   polities: Polity[];
   highlightedIds: ReadonlySet<string>;
   selectedPlaceId: string | null;
+  selectedJourneyId: string | null;
   /** Place ids to frame. Changing this array re-fits the viewport. */
   focusPlaceIds: string[];
   onSelectPlace: (placeId: string | null) => void;
+  onSelectJourney: (journeyId: string) => void;
 }
+
+/** Route layers, listed where a click or hover query needs all three at once. */
+const ROUTE_LAYERS = ['route-line-land', 'route-line-sea', 'route-line-inferred'] as const;
 
 const SOURCES = { places: 'atlas-places', routes: 'atlas-routes', polities: 'atlas-polities', decor: 'atlas-decor' } as const;
 
@@ -34,6 +39,7 @@ const INK = {
   accent2: '#47756a', // sea teal — sea legs, decorative water labels
   accent2Deep: '#335c53',
   neutral: '#85765a', // inferred routes, conjectural sites
+  select: '#c79a3e', // gilt — the glow under a selected route
 } as const;
 
 /**
@@ -56,8 +62,10 @@ export function AtlasMap({
   polities,
   highlightedIds,
   selectedPlaceId,
+  selectedJourneyId,
   focusPlaceIds,
   onSelectPlace,
+  onSelectJourney,
 }: AtlasMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
@@ -66,6 +74,9 @@ export function AtlasMap({
   // whatever bounds were last focused), but when a focus change and a selection
   // arrive together, the fit must reserve room for the panel that is opening.
   const selectedRef = useRef(selectedPlaceId);
+  // Same idea for the journey panel: it shares the drawer, so a fit that arrives
+  // with a journey selected must leave room for it too.
+  const journeyRef = useRef(selectedJourneyId);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const basemap = useMemo(() => resolveBasemap(), []);
 
@@ -187,6 +198,14 @@ export function AtlasMap({
     map.setFilter('place-selected', ['==', ['get', 'id'], selectedPlaceId ?? '__none__']);
   }, [selectedPlaceId, status]);
 
+  // ── Selected-route glow ────────────────────────────────────────────────────
+  useEffect(() => {
+    journeyRef.current = selectedJourneyId;
+    const map = mapRef.current;
+    if (!map || status !== 'ready') return;
+    map.setFilter('route-selected', ['==', ['get', 'journeyId'], selectedJourneyId ?? '__none__']);
+  }, [selectedJourneyId, status]);
+
   // ── Framing ──────────────────────────────────────────────────────────────
   useEffect(() => {
     const map = mapRef.current;
@@ -201,7 +220,8 @@ export function AtlasMap({
     // because it measured the window instead of the container, and MapLibre
     // dutifully framed the subject into the 101px that remained.
     const width = map.getContainer().clientWidth;
-    const panelPad = selectedRef.current !== null ? Math.min(400, Math.round(width * 0.45)) : 0;
+    const panelOpen = selectedRef.current !== null || journeyRef.current !== null;
+    const panelPad = panelOpen ? Math.min(400, Math.round(width * 0.45)) : 0;
     const right = width - (60 + panelPad + 60) >= 180 ? 60 + panelPad : 60;
 
     map.fitBounds(bounds, {
@@ -217,12 +237,33 @@ export function AtlasMap({
     if (!map || status !== 'ready') return;
 
     const handleClick = (event: maplibregl.MapMouseEvent) => {
-      const hits = map.queryRenderedFeatures(event.point, {
+      // Places take priority: a dot sitting on top of a route should select the
+      // place, not the line under it.
+      const placeHits = map.queryRenderedFeatures(event.point, {
         layers: ['place-dot', 'place-label'],
       }) as MapGeoJSONFeature[];
+      const placeId = placeHits[0]?.properties?.['id'];
+      if (typeof placeId === 'string') {
+        onSelectPlace(placeId);
+        return;
+      }
 
-      const id = hits[0]?.properties?.['id'];
-      onSelectPlace(typeof id === 'string' ? id : null);
+      // Route lines are only a couple of pixels wide, so hit-test a small box
+      // around the cursor rather than the exact point.
+      const pad = 6;
+      const box: [maplibregl.PointLike, maplibregl.PointLike] = [
+        [event.point.x - pad, event.point.y - pad],
+        [event.point.x + pad, event.point.y + pad],
+      ];
+      const routeHits = map.queryRenderedFeatures(box, { layers: [...ROUTE_LAYERS] }) as MapGeoJSONFeature[];
+      const journeyId = routeHits[0]?.properties?.['journeyId'];
+      if (typeof journeyId === 'string') {
+        onSelectJourney(journeyId);
+        return;
+      }
+
+      // Empty ground clears whatever panel is open.
+      onSelectPlace(null);
     };
 
     const showPointer = () => {
@@ -232,16 +273,22 @@ export function AtlasMap({
       map.getCanvas().style.cursor = '';
     };
 
+    const hoverLayers = ['place-dot', ...ROUTE_LAYERS];
+
     map.on('click', handleClick);
-    map.on('mouseenter', 'place-dot', showPointer);
-    map.on('mouseleave', 'place-dot', hidePointer);
+    for (const layer of hoverLayers) {
+      map.on('mouseenter', layer, showPointer);
+      map.on('mouseleave', layer, hidePointer);
+    }
 
     return () => {
       map.off('click', handleClick);
-      map.off('mouseenter', 'place-dot', showPointer);
-      map.off('mouseleave', 'place-dot', hidePointer);
+      for (const layer of hoverLayers) {
+        map.off('mouseenter', layer, showPointer);
+        map.off('mouseleave', layer, hidePointer);
+      }
     };
-  }, [onSelectPlace, status]);
+  }, [onSelectPlace, onSelectJourney, status]);
 
   return (
     <>
@@ -385,6 +432,23 @@ function installLayers(map: MapLibreMap): void {
   const routeWidth: maplibregl.DataDrivenPropertyValueSpecification<number> = [
     'interpolate', ['linear'], ['zoom'], 4, 1.4, 10, 2.6,
   ];
+
+  // A soft gilt glow beneath the selected journey's legs, so a clicked route
+  // stands out from the others without altering its own colour or dash. Drawn
+  // before the mode lines so it reads as a halo the coloured line sits on.
+  map.addLayer({
+    id: 'route-selected',
+    type: 'line',
+    source: SOURCES.routes,
+    filter: ['==', ['get', 'journeyId'], '__none__'],
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: {
+      'line-color': INK.select,
+      'line-width': ['interpolate', ['linear'], ['zoom'], 4, 5, 10, 10],
+      'line-opacity': 0.55,
+      'line-blur': 0.6,
+    },
+  });
 
   map.addLayer({
     id: 'route-line-land',

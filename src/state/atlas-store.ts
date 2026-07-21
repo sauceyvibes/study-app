@@ -30,6 +30,8 @@ interface AtlasState {
   selectedPlaceId: string | null;
   /** The person whose pop-up is open, or null. Independent of the place panel. */
   selectedPersonId: string | null;
+  /** The journey whose panel is open, or null. Shares the drawer with a place. */
+  selectedJourneyId: string | null;
   /** Place ids the map should frame, e.g. after a person search. */
   focusPlaceIds: string[];
   /** Journey ids drawn as routes. */
@@ -43,6 +45,7 @@ interface AtlasState {
   setChapter: (chapter: number | null) => void;
   selectPlace: (placeId: string | null) => void;
   selectPerson: (personId: string | null) => void;
+  selectJourney: (journeyId: string | null) => void;
   focusPlaces: (placeIds: string[]) => void;
   toggleJourney: (journeyId: string) => void;
   setJourneys: (journeyIds: string[]) => void;
@@ -63,6 +66,7 @@ export const useAtlas = create<AtlasState>((set, get) => ({
   chapter: null,
   selectedPlaceId: null,
   selectedPersonId: null,
+  selectedJourneyId: null,
   focusPlaceIds: [],
   activeJourneyIds: [],
   showPolities: true,
@@ -82,7 +86,7 @@ export const useAtlas = create<AtlasState>((set, get) => ({
     const { start, end } = meta.narrativeRange;
     const midpoint = clampYear((start + (end ?? start)) / 2);
 
-    set({ mode: 'book', bookId, chapter, year: midpoint, selectedPlaceId: null, selectedPersonId: null });
+    set({ mode: 'book', bookId, chapter, year: midpoint, selectedPlaceId: null, selectedPersonId: null, selectedJourneyId: null });
   },
 
   setChapter: (chapter) => {
@@ -94,11 +98,15 @@ export const useAtlas = create<AtlasState>((set, get) => ({
     set({ chapter });
   },
 
-  // Selecting a place also dismisses any open person pop-up, so a click on the
-  // map never leaves the modal floating over an unrelated place.
-  selectPlace: (placeId) => set({ selectedPlaceId: placeId, selectedPersonId: null }),
+  // Selecting a place also dismisses any open person pop-up and journey panel, so
+  // a click on the map never leaves a stale panel floating over an unrelated place.
+  selectPlace: (placeId) => set({ selectedPlaceId: placeId, selectedPersonId: null, selectedJourneyId: null }),
 
   selectPerson: (personId) => set({ selectedPersonId: personId }),
+
+  // A place and a journey share the right-hand drawer, so opening one closes the
+  // other; a person pop-up is a modal overlay and is cleared too.
+  selectJourney: (journeyId) => set({ selectedJourneyId: journeyId, selectedPlaceId: null, selectedPersonId: null }),
 
   focusPlaces: (placeIds) => set({ focusPlaceIds: placeIds }),
 

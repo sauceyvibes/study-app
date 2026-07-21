@@ -36,6 +36,12 @@ washes and the route lines — overland, by sea, and inferred connections drawn
 exactly as the map draws them — and it rides along into fullscreen, where the
 confidence key stays pinned in the lower corner too.
 
+**Routes open like places.** Click a route on the map (or search one) and a panel
+gives its span in years, its start and end, who travelled it, and how much of the
+path is reconstructed — then the itinerary stage by stage, each leg naming its two
+places, how that stretch was travelled, and its passages. It gathers the datable
+events that fall along the way and totals the distance and the sea/overland split.
+
 **Uncertainty as a first-class citizen.** Every identification carries a
 confidence rating, and a place cannot be marked *contested* without naming the
 competing candidates — the test suite enforces it. Ai shows you that its
@@ -55,8 +61,9 @@ southern tradition is Byzantine, not ancient.
   name *and* location) they are folded together, so nothing is double-pinned.
 - **Every book is indexed.** A chapter with no places genuinely names none — the
   book view marks it plainly rather than leaving it in an "unverified" state.
-- **Routes are static arcs.** Animating them along the path is a next step and
-  needs no data changes.
+- **Routes are drawn arcs, and now interactive.** Each is clickable and opens its
+  own panel; animating them along the path is a next step and needs no data
+  changes.
 - **Going public needs a one-time Stadia Maps step.** See below.
 
 The gazetteer is regenerated with `node scripts/build-gazetteer.mjs` from the
@@ -138,7 +145,7 @@ inscription or excavation report, the entry says which.
 npm test
 ```
 
-77 tests. The most valuable are the corpus integrity checks: the data files are
+82 tests. The most valuable are the corpus integrity checks: the data files are
 hand-written, so the realistic failure is not a logic bug but a typo in an id —
 a journey leg pointing at a site that does not exist, a chapter index referencing
 a chapter the book does not have. Those would fail silently at runtime as an

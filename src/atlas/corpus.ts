@@ -1,4 +1,4 @@
-import type { AtlasCorpus, BookMeta, HistoricalEvent, Journey, Person, Place, Polity, Year } from './types';
+import type { AtlasCorpus, BookMeta, Coordinates, HistoricalEvent, Journey, Person, Place, Polity, Year } from './types';
 import { PLACES as CURATED_PLACES, ATLAS_COVERAGE } from './data/places';
 import { PERIODS } from './data/periods';
 import { PEOPLE } from './data/people';
@@ -179,4 +179,83 @@ export function journeysForBook(bookId: string): Journey[] {
   return JOURNEYS.filter(
     (j) => j.scripture.some((r) => r.book === bookId) || j.legs.some((l) => l.scripture.some((r) => r.book === bookId)),
   );
+}
+
+/** Ordered, de-duplicated place ids a journey passes through. */
+export function placeIdsForJourney(journey: Journey): string[] {
+  const ids: string[] = [];
+  const seen = new Set<string>();
+  for (const leg of journey.legs) {
+    for (const id of [leg.fromPlace, leg.toPlace]) {
+      if (!seen.has(id)) {
+        seen.add(id);
+        ids.push(id);
+      }
+    }
+  }
+  return ids;
+}
+
+/** The places a journey passes through, in itinerary order. */
+export function placesForJourney(journey: Journey): Place[] {
+  return resolvePlaces(placeIdsForJourney(journey));
+}
+
+/**
+ * The datable events that fall within a journey.
+ *
+ * An event counts if it is dated inside the journey's window *and* it either
+ * involves the traveller or happens at one of the journey's stops — which keeps,
+ * say, the Areopagus address on Paul's second journey while excluding an unrelated
+ * event that merely shares the years.
+ */
+export function eventsForJourney(journey: Journey): HistoricalEvent[] {
+  const stops = new Set(journey.legs.flatMap((l) => [l.fromPlace, l.toPlace]));
+  const start = journey.range.start;
+  const end = journey.range.end ?? start;
+  return EVENTS.filter((e) => {
+    if (e.year < start || e.year > end) return false;
+    return e.people.includes(journey.traveler) || e.places.some((p) => stops.has(p));
+  }).sort((a, b) => a.year - b.year);
+}
+
+/** Great-circle distance in kilometres between two [lon, lat] points. */
+function haversineKm(a: Coordinates, b: Coordinates): number {
+  const R = 6371;
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(b[1] - a[1]);
+  const dLon = toRad(b[0] - a[0]);
+  const h =
+    Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a[1])) * Math.cos(toRad(b[1])) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+export interface JourneyStats {
+  /** Rounded total path length in km, summed over locatable legs. */
+  km: number;
+  stages: number;
+  landStages: number;
+  seaStages: number;
+  inferredStages: number;
+}
+
+/**
+ * Distance and mode breakdown for a journey. The distance is the sum of the
+ * straight-line lengths of the legs whose endpoints we can place — an honest
+ * lower bound on the ground covered, not a claim about the exact road taken.
+ */
+export function journeyStats(journey: Journey): JourneyStats {
+  let km = 0;
+  let landStages = 0;
+  let seaStages = 0;
+  let inferredStages = 0;
+  for (const leg of journey.legs) {
+    const from = PLACE_BY_ID.get(leg.fromPlace)?.coordinates;
+    const to = PLACE_BY_ID.get(leg.toPlace)?.coordinates;
+    if (from && to) km += haversineKm(from, to);
+    if (leg.mode === 'sea') seaStages += 1;
+    else if (leg.mode === 'inferred') inferredStages += 1;
+    else landStages += 1;
+  }
+  return { km: Math.round(km), stages: journey.legs.length, landStages, seaStages, inferredStages };
 }

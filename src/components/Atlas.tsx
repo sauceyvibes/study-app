@@ -7,6 +7,8 @@ import { SearchPanel } from './SearchPanel';
 import { BookNavigator } from './BookNavigator';
 import { PlacePanel } from './PlacePanel';
 import { PersonPanel } from './PersonPanel';
+import { JourneyPanel } from './JourneyPanel';
+import { RouteSwatch, ROUTE_LABEL } from './RouteGlyph';
 import { Timeline } from './Timeline';
 import {
   placesAtYear,
@@ -15,6 +17,7 @@ import {
   placesForBook,
   journeysForBook,
   eventsNearYear,
+  placeIdsForJourney,
 } from '@/atlas/corpus';
 import { JOURNEY_BY_ID } from '@/atlas/corpus';
 import { BOOK_BY_ID } from '@/atlas/corpus';
@@ -33,36 +36,6 @@ const AtlasMap = dynamic(() => import('./map/AtlasMap').then((m) => m.AtlasMap),
     </div>
   ),
 });
-
-/** Route-mode labels and swatches for the legend. */
-type RouteMode = 'land' | 'sea' | 'inferred';
-
-const ROUTE_LABEL: Record<RouteMode, string> = {
-  land: 'Overland',
-  sea: 'By sea',
-  inferred: 'Inferred link',
-};
-
-/**
- * A short line drawn exactly as the map draws that route mode — solid terracotta
- * for land, dashed teal for sea, dotted neutral for an inferred connection. The
- * colours and dash patterns are the same values the map's route layers use, so
- * the key is a true statement about the plate, not an approximation of it.
- */
-function RouteSwatch({ mode }: { mode: RouteMode }) {
-  const stroke =
-    mode === 'sea'
-      ? 'var(--color-accent-2-600)'
-      : mode === 'inferred'
-        ? 'var(--color-neutral-600)'
-        : 'var(--color-accent-700)';
-  const dash = mode === 'sea' ? '6 3' : mode === 'inferred' ? '2 3' : undefined;
-  return (
-    <svg className="map-legend__route" width="22" height="8" viewBox="0 0 22 8" aria-hidden="true">
-      <line x1="1" y1="4" x2="21" y2="4" stroke={stroke} strokeWidth="2" strokeLinecap="round" strokeDasharray={dash} />
-    </svg>
-  );
-}
 
 /**
  * The application shell.
@@ -84,6 +57,7 @@ export function Atlas() {
   const chapter = useAtlas((s) => s.chapter);
   const selectedPlaceId = useAtlas((s) => s.selectedPlaceId);
   const selectedPersonId = useAtlas((s) => s.selectedPersonId);
+  const selectedJourneyId = useAtlas((s) => s.selectedJourneyId);
   const focusPlaceIds = useAtlas((s) => s.focusPlaceIds);
   const activeJourneyIds = useAtlas((s) => s.activeJourneyIds);
   const showPolities = useAtlas((s) => s.showPolities);
@@ -95,6 +69,7 @@ export function Atlas() {
   const setChapter = useAtlas((s) => s.setChapter);
   const selectPlace = useAtlas((s) => s.selectPlace);
   const selectPerson = useAtlas((s) => s.selectPerson);
+  const selectJourney = useAtlas((s) => s.selectJourney);
   const focusPlaces = useAtlas((s) => s.focusPlaces);
   const toggleJourney = useAtlas((s) => s.toggleJourney);
   const togglePolities = useAtlas((s) => s.togglePolities);
@@ -185,12 +160,30 @@ export function Atlas() {
         return;
       }
 
-      // Events and journeys frame their places without opening a panel: the
-      // subject is the set of locations, not any single one of them.
+      // A route opens its own panel, framed to the whole itinerary.
+      if (result.kind === 'journey') {
+        selectJourney(result.id);
+        focusPlaces(result.placeIds);
+        return;
+      }
+
+      // Events frame their places without opening a panel: the subject is the
+      // set of locations, not any single one of them.
       selectPlace(null);
       focusPlaces(result.placeIds);
     },
-    [selectPlace, selectPerson, focusPlaces, selectBook, setMode],
+    [selectPlace, selectPerson, selectJourney, focusPlaces, selectBook, setMode],
+  );
+
+  // Clicking a route on the map (or a route search result) opens its panel and
+  // frames the map on the full journey, the way selecting a book frames a book.
+  const handleSelectJourney = useCallback(
+    (journeyId: string) => {
+      selectJourney(journeyId);
+      const journey = JOURNEY_BY_ID.get(journeyId);
+      if (journey) focusPlaces(placeIdsForJourney(journey));
+    },
+    [selectJourney, focusPlaces],
   );
 
   return (
@@ -297,8 +290,10 @@ export function Atlas() {
               polities={polities}
               highlightedIds={highlightedIds}
               selectedPlaceId={selectedPlaceId}
+              selectedJourneyId={selectedJourneyId}
               focusPlaceIds={focusPlaceIds}
               onSelectPlace={selectPlace}
+              onSelectJourney={handleSelectJourney}
             />
             <div className="plate__vignette" aria-hidden="true" />
             <PlateGrain />
@@ -379,6 +374,18 @@ export function Atlas() {
             placeId={selectedPlaceId}
             onClose={() => selectPlace(null)}
             onSelectPlace={selectPlace}
+            onSelectPerson={selectPerson}
+          />
+        )}
+
+        {selectedJourneyId && !selectedPlaceId && (
+          <JourneyPanel
+            journeyId={selectedJourneyId}
+            onClose={() => selectJourney(null)}
+            onSelectPlace={(id) => {
+              selectPlace(id);
+              focusPlaces([id]);
+            }}
             onSelectPerson={selectPerson}
           />
         )}

@@ -88,12 +88,12 @@ export function PersonPanel({ personId, onClose, onSelectPlace }: PersonPanelPro
         {events.length > 0 && (
           <section className="panel__section">
             <h3 className="panel__heading">In these events</h3>
-            <ul className="person-events">
+            <ul className="event-log">
               {events.map((event) => (
                 <li key={event.id}>
-                  <span className="person-events__year">{formatYear(event.year)}</span>
-                  <span className="person-events__name">{event.name}</span>
-                  <span className="person-events__desc">{event.description}</span>
+                  <span className="event-log__year">{formatYear(event.year)}</span>
+                  <span className="event-log__name">{event.name}</span>
+                  <span className="event-log__desc">{event.description}</span>
                 </li>
               ))}
             </ul>
