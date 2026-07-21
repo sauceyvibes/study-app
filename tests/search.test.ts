@@ -124,17 +124,20 @@ describe('search', () => {
     expect(first?.placeIds).toContain('philippi');
   });
 
-  it('says when a chapter is indexed but names no places', () => {
-    const [first] = search('Jonah 2');
+  it('says when a chapter names no places', () => {
+    // 2 John names no geographic place — a true empty, now that every book is
+    // indexed against the full gazetteer.
+    const [first] = search('2 John 1');
     expect(first?.kind).toBe('scripture');
     expect(first?.placeIds).toEqual([]);
     expect(first?.subtitle).toMatch(/no places/i);
   });
 
-  it('distinguishes an unindexed chapter from an empty one', () => {
-    // Psalms is not indexed chapter by chapter, and must not claim otherwise.
-    const [first] = search('Psalm 23');
-    expect(first?.subtitle).toMatch(/not yet indexed/i);
+  it('reports the places for a chapter the full gazetteer now covers', () => {
+    // Genesis 10, the Table of Nations, was blank under the curated-only index.
+    const [first] = search('Genesis 10');
+    expect(first?.kind).toBe('scripture');
+    expect(first!.placeIds.length).toBeGreaterThan(5);
   });
 
   it('falls back to prose when nothing matches by name', () => {

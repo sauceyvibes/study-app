@@ -25,9 +25,7 @@ export const PLACES: Place[] = [
 ];
 
 export const ATLAS_COVERAGE = {
-  version: '0.1.0',
-  /** Books whose chapter-level place index is complete. */
-  fullyIndexedBooks: ['ruth', 'jonah'] as const,
+  version: '0.2.0',
   statement:
-    'This edition carries a curated core of the biblical gazetteer rather than every toponym in the text. Places absent here may still be named in scripture. Chapter-level indexing is complete only for the books listed as indexed; elsewhere the book view shows the places we have confirmed, not an exhaustive list.',
+    'Every place named in the Protestant Bible is indexed to the chapter, drawn from OpenBible.info Bible Geocoding (CC BY 4.0). A curated core of major sites carries fuller detail — descriptions, ancient names, archaeology and sources — layered on top of that comprehensive base.',
 } as const;

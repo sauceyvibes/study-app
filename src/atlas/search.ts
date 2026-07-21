@@ -1,6 +1,5 @@
 import type { AncientNames, ScriptureRef } from './types';
-import { BOOKS } from './data/books';
-import { CORPUS, PLACE_BY_ID, placesForPerson } from './corpus';
+import { BOOKS, CORPUS, PLACE_BY_ID, placesForPerson } from './corpus';
 
 /**
  * The atlas search engine.
@@ -300,12 +299,12 @@ export function search(query: string): SearchResult[] {
       kind: 'scripture',
       id: `${ref.book}-${ref.chapter}`,
       title: formatScriptureRef(ref),
+      // Every book is indexed against the full gazetteer now, so an empty result
+      // is a fact about the chapter, not a gap in our data.
       subtitle:
         placeIds.length > 0
           ? `${placeIds.length} ${placeIds.length === 1 ? 'place' : 'places'} on the map`
-          : meta?.indexed
-            ? 'No places named in this chapter'
-            : 'This chapter is not yet indexed',
+          : 'No places named in this chapter',
       matchedOn: 'Scripture reference',
       score: 1000,
       reference: ref,

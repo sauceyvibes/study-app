@@ -16,7 +16,7 @@ import {
   eventsNearYear,
 } from '@/atlas/corpus';
 import { JOURNEY_BY_ID } from '@/atlas/corpus';
-import { BOOK_BY_ID } from '@/atlas/data/books';
+import { BOOK_BY_ID } from '@/atlas/corpus';
 import { periodForYear } from '@/atlas/data/periods';
 import { formatYear, formatYearRange } from '@/atlas/search';
 import type { SearchResult } from '@/atlas/search';
@@ -73,20 +73,22 @@ export function Atlas() {
   // even if their occupation window does not cover the chosen year, because the
   // reader asked for that book and expects its sites to be visible.
   const places = useMemo(() => {
-    const byYear = placesAtYear(year);
-    if (mode !== 'book' || !bookId) return byYear;
-
-    const fromBook = placesForBook(bookId, chapter ?? undefined) ?? [];
-    const seen = new Set(byYear.map((p) => p.id));
-    return [...byYear, ...fromBook.filter((p) => !seen.has(p.id) && p.coordinates !== null)];
+    // Book mode shows only what the selected book (or chapter) names — that is
+    // the whole point of the mode, and with the full gazetteer it is a real
+    // filter rather than the near-empty result it used to be.
+    if (mode === 'book' && bookId) {
+      return (placesForBook(bookId, chapter ?? undefined) ?? []).filter((p) => p.coordinates !== null);
+    }
+    return placesAtYear(year);
   }, [year, mode, bookId, chapter]);
 
   const highlightedIds = useMemo(() => {
-    if (mode === 'book' && bookId) {
-      return new Set((placesForBook(bookId, chapter ?? undefined) ?? []).map((p) => p.id));
-    }
+    // In book mode every place shown already belongs to the book, so nothing is
+    // singled out — let the confidence colours read. In timeline mode a search
+    // focus is what gets emphasised.
+    if (mode === 'book') return new Set<string>();
     return new Set(focusPlaceIds);
-  }, [mode, bookId, chapter, focusPlaceIds]);
+  }, [mode, focusPlaceIds]);
 
   const journeys = useMemo(() => {
     const explicit = activeJourneyIds
@@ -223,9 +225,13 @@ export function Atlas() {
 
           <hr className="rule" />
           <p className="coverage-note">
-            A curated core of the biblical gazetteer, not every toponym in the text. Places absent
-            here may still be named in scripture. Chapter indexing is complete only for Ruth and
-            Jonah.
+            Every place named in the Protestant Bible, indexed to the chapter, with a curated core
+            of major sites carrying fuller detail. Place identifications, coordinates and references
+            are drawn from{' '}
+            <a href="https://www.openbible.info/geo/" target="_blank" rel="noreferrer">
+              OpenBible.info Bible Geocoding
+            </a>{' '}
+            (CC&nbsp;BY&nbsp;4.0); disputed identifications are shown with their alternatives.
           </p>
         </div>
       </div>
@@ -305,11 +311,10 @@ export function Atlas() {
           />
         )}
 
-        {book && !selectedPlaceId && highlightedIds.size === 0 && (
-          <div className="map-notice">
-            {book.name}
-            {chapter ? ` ${chapter}` : ''} has no places recorded in this edition
-            {book.indexed ? '.' : ' yet.'}
+        {mode === 'book' && book && !selectedPlaceId && places.length === 0 && (
+          <div className="map-notice map-notice--book">
+            No geographic place is named in {book.name}
+            {chapter ? ` ${chapter}` : ''}.
           </div>
         )}
       </div>

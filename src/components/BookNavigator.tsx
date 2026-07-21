@@ -1,6 +1,6 @@
 'use client';
 
-import { BOOKS, BOOK_BY_ID } from '@/atlas/data/books';
+import { BOOKS, BOOK_BY_ID } from '@/atlas/corpus';
 import { formatYearRange } from '@/atlas/search';
 import type { BookMeta } from '@/atlas/types';
 
@@ -81,15 +81,6 @@ function ChapterPicker({
         Set in {formatYearRange(book.narrativeRange.start, book.narrativeRange.end)}
       </p>
 
-      {!book.indexed && (
-        <div className="empty">
-          <p>
-            This book has not been indexed chapter by chapter. The chapters marked below are the
-            ones confirmed; the rest are not necessarily empty, only unverified.
-          </p>
-        </div>
-      )}
-
       <p className="label" style={{ margin: '16px 0 7px' }}>
         Chapter
       </p>
@@ -106,15 +97,15 @@ function ChapterPicker({
           </button>
         </li>
         {chapters.map((number) => {
-          const indexed = (book.placesByChapter[number]?.length ?? 0) > 0;
+          const hasPlaces = (book.placesByChapter[number]?.length ?? 0) > 0;
           return (
             <li key={number}>
               <button
                 type="button"
-                className={`chapters__button${indexed ? '' : ' chapters__button--unindexed'}`}
+                className={`chapters__button${hasPlaces ? '' : ' chapters__button--unindexed'}`}
                 aria-pressed={chapter === number}
                 onClick={() => onSelectChapter(number)}
-                title={indexed ? undefined : 'No places recorded for this chapter yet'}
+                title={hasPlaces ? undefined : 'No geographic place is named in this chapter'}
               >
                 {number}
               </button>

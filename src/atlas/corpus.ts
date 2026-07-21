@@ -1,27 +1,45 @@
-import type { AtlasCorpus, HistoricalEvent, Journey, Person, Place, Polity, Year } from './types';
-import { PLACES, ATLAS_COVERAGE } from './data/places';
+import type { AtlasCorpus, BookMeta, HistoricalEvent, Journey, Person, Place, Polity, Year } from './types';
+import { PLACES as CURATED_PLACES, ATLAS_COVERAGE } from './data/places';
 import { PERIODS } from './data/periods';
 import { PEOPLE } from './data/people';
 import { MINOR_PEOPLE } from './data/people-minor';
 import { EVENTS } from './data/events';
 import { JOURNEYS } from './data/journeys';
 import { POLITIES } from './data/polities';
-import { BOOKS } from './data/books';
+import { BOOKS as BASE_BOOKS } from './data/books';
+import { GAZETTEER_PLACES, CHAPTER_INDEX, GAZETTEER_ATTRIBUTION } from './data/gazetteer';
 
-export { ATLAS_COVERAGE };
+export { ATLAS_COVERAGE, GAZETTEER_ATTRIBUTION };
 
 /**
  * The assembled corpus and the lookup indexes built over it.
  *
  * Everything here is computed once at module load from static data. There is no
- * network call and no database read: the corpus is a few hundred kilobytes of
- * version-controlled TypeScript, which the bundler tree-shakes and the CDN caches
- * at the edge. A document store would add latency and cost to solve a problem this
- * app does not have — see docs/architecture.md for why Firestore is reserved for
- * user-generated data instead.
+ * network call and no database read: the corpus ships inside the bundle and the
+ * CDN caches it at the edge. A document store would add latency and cost to
+ * solve a problem this app does not have — see docs/architecture.md.
+ *
+ * Two layers make up the places: the hand-curated core (rich entries, in
+ * `data/places/`) and the comprehensive OpenBible-derived gazetteer (in
+ * `data/gazetteer.ts`). Curated first, so a curated entry wins any id lookup.
  */
+
+/** Curated first, so their richer entries win the id lookup. */
+export const PLACES: Place[] = [...CURATED_PLACES, ...GAZETTEER_PLACES];
+
 /** Full biographies first, so they win the id lookup if a slug is ever repeated. */
 const ALL_PEOPLE: Person[] = [...PEOPLE, ...MINOR_PEOPLE.filter((m) => !PEOPLE.some((p) => p.id === m.id))];
+
+/**
+ * Books with the comprehensive chapter index merged in. Every book is now marked
+ * indexed: the OpenBible dataset covers the whole Protestant canon, so a chapter
+ * with no places genuinely names none rather than being un-worked.
+ */
+export const BOOKS: BookMeta[] = BASE_BOOKS.map((book) => ({
+  ...book,
+  placesByChapter: CHAPTER_INDEX[book.id] ?? {},
+  indexed: true,
+}));
 
 export const CORPUS: AtlasCorpus = {
   places: PLACES,
@@ -42,6 +60,7 @@ export const PERSON_BY_ID = indexById(ALL_PEOPLE);
 export const EVENT_BY_ID = indexById(EVENTS);
 export const JOURNEY_BY_ID = indexById(JOURNEYS);
 export const POLITY_BY_ID = indexById(POLITIES);
+export const BOOK_BY_ID: ReadonlyMap<string, BookMeta> = indexById(BOOKS);
 
 /** Places with no coordinates cannot be drawn; keep them searchable but off-map. */
 export const MAPPABLE_PLACES: Place[] = PLACES.filter((p) => p.coordinates !== null);

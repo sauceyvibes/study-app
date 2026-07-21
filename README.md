@@ -31,19 +31,24 @@ traditional site had been a ruin for a thousand years before any plausible
 conquest date. Mount Sinai shows you three candidate mountains and says the
 southern tradition is Byzantine, not ancient.
 
-## Honest scope
+## Coverage
 
-This is a working application on a curated corpus, not a finished atlas.
-
-- **About 70 places**, researched properly, covering the sites that carry the
-  most narrative weight. Places named in scripture may be absent here; the
-  interface says so rather than implying the Bible is silent about them.
-- **Chapter-level indexing is complete for two books** (Ruth, Jonah). Other books
-  show confirmed places and are visibly marked as partial — unindexed chapters
-  render with a dashed outline rather than being silently shown as empty.
+- **Every place named in the Protestant Bible**, indexed to the chapter — about
+  1,300 places drawn from [OpenBible.info Bible Geocoding](https://www.openbible.info/geo/)
+  (CC BY 4.0), which disambiguates each place, catalogues it by verse, and rates
+  the confidence of its modern identification.
+- **A curated core of ~70 major sites** carries fuller detail on top of that
+  base: written descriptions, Hebrew/Greek names, archaeology and cited sources.
+  Where a curated entry and an OpenBible record are the same place (matched by
+  name *and* location) they are folded together, so nothing is double-pinned.
+- **Every book is indexed.** A chapter with no places genuinely names none — the
+  book view marks it plainly rather than leaving it in an "unverified" state.
 - **Routes are static arcs.** Animating them along the path is a next step and
   needs no data changes.
 - **Going public needs a one-time Stadia Maps step.** See below.
+
+The gazetteer is regenerated with `node scripts/build-gazetteer.mjs` from the
+OpenBible source data; see the script header for the exact input and provenance.
 
 ## The basemap
 
@@ -86,10 +91,17 @@ Project → Settings → Build & Deployment.
 ## Data and sources
 
 The corpus lives in `src/atlas/data/` as typed TypeScript, under version control,
-so a correction to a coordinate arrives as a reviewable diff. Coordinates are
-given for the excavated tell where one is identified, not the modern town that
-inherited the name — for Jericho and Beth-shemesh these are more than a kilometre
-apart.
+so a correction to a coordinate arrives as a reviewable diff. The curated core's
+coordinates are given for the excavated tell where one is identified, not the
+modern town that inherited the name — for Jericho and Beth-shemesh these are more
+than a kilometre apart.
+
+The comprehensive layer — place identifications, coordinates, confidence ratings
+and verse references — comes from **OpenBible.info Bible Geocoding**, licensed
+CC BY 4.0, and is credited in the app. It is transformed into
+`src/atlas/data/gazetteer.generated.json` by `scripts/build-gazetteer.mjs`; the
+merge with the curated core and the chapter-index inversion happen at load in
+`src/atlas/data/gazetteer.ts`.
 
 Dates follow the standard anchors: the Assyrian eponym canon and the Babylonian
 Chronicles for the first millennium BC, Thiele's regnal synchronisms for the
@@ -114,7 +126,7 @@ inscription or excavation report, the entry says which.
 npm test
 ```
 
-63 tests. The most valuable are the corpus integrity checks: the data files are
+68 tests. The most valuable are the corpus integrity checks: the data files are
 hand-written, so the realistic failure is not a logic bug but a typo in an id —
 a journey leg pointing at a site that does not exist, a chapter index referencing
 a chapter the book does not have. Those would fail silently at runtime as an

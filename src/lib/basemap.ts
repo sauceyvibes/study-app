@@ -139,10 +139,12 @@ export const DEFAULT_VIEW = {
 } as const;
 
 /**
- * Hard bounds on panning. Generous enough to reach Rome and Ur without letting
- * the user get lost in the Atlantic.
+ * Hard bounds on panning. Wide enough to reach every place in the gazetteer —
+ * Tarshish in the west (Spain, ~7°W), the Persian and Indian frontier in the
+ * east, Sheba and Ophir in the south (~14°N), and the Black Sea coast in the
+ * north — without letting the user drift off into empty ocean.
  */
 export const MAX_BOUNDS: [[number, number], [number, number]] = [
-  [-2, 18],
-  [72, 52],
+  [-12, 8],
+  [78, 50],
 ];

@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { CORPUS, PLACE_BY_ID, PERSON_BY_ID, EVENT_BY_ID, POLITY_BY_ID, placesForBook, placesAtYear, rangeContains } from '../src/atlas/corpus';
+import { CORPUS, BOOKS, PLACE_BY_ID, PERSON_BY_ID, EVENT_BY_ID, POLITY_BY_ID, placesForBook, placesAtYear, rangeContains } from '../src/atlas/corpus';
 import { PERIODS, TIMELINE_BOUNDS, periodForYear } from '../src/atlas/data/periods';
-import { BOOKS } from '../src/atlas/data/books';
 
 /**
  * Referential integrity for the corpus.
@@ -88,11 +87,12 @@ describe('corpus integrity', () => {
     for (const place of CORPUS.places) {
       if (!place.coordinates) continue;
       const [lon, lat] = place.coordinates;
-      // Roughly Gibraltar to the Iranian plateau, Upper Egypt to the Black Sea.
-      expect(lon, `${place.id} longitude`).toBeGreaterThan(-10);
-      expect(lon, `${place.id} longitude`).toBeLessThan(75);
-      expect(lat, `${place.id} latitude`).toBeGreaterThan(20);
-      expect(lat, `${place.id} latitude`).toBeLessThan(50);
+      // The full biblical world: Tarshish (Spain) to the Persian/Indian frontier,
+      // Sheba and Ophir in southern Arabia up to the Black Sea coast.
+      expect(lon, `${place.id} longitude`).toBeGreaterThan(-12);
+      expect(lon, `${place.id} longitude`).toBeLessThan(78);
+      expect(lat, `${place.id} latitude`).toBeGreaterThan(8);
+      expect(lat, `${place.id} latitude`).toBeLessThan(51);
     }
   });
 
@@ -113,6 +113,52 @@ describe('corpus integrity', () => {
         expect(event.year, `${event.id}`).toBeLessThanOrEqual(event.range.end);
       }
     }
+  });
+});
+
+describe('comprehensive gazetteer', () => {
+  it('carries the full biblical gazetteer, not just the curated core', () => {
+    // OpenBible catalogues ~1,300 places; a regression that dropped the bulk
+    // import would show here long before anyone noticed empty chapters.
+    expect(CORPUS.places.length).toBeGreaterThan(1000);
+  });
+
+  it('marks every book indexed, so no chapter is in an unknown state', () => {
+    for (const book of BOOKS) {
+      expect(book.indexed, `${book.id} should be indexed`).toBe(true);
+    }
+  });
+
+  it('resolves every id in every book chapter index', () => {
+    for (const book of BOOKS) {
+      for (const [chapter, ids] of Object.entries(book.placesByChapter)) {
+        expect(Number(chapter)).toBeGreaterThanOrEqual(1);
+        expect(Number(chapter)).toBeLessThanOrEqual(book.chapters);
+        for (const id of ids) {
+          expect(PLACE_BY_ID.has(id), `${book.id} ${chapter} → ${id}`).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('indexes the great majority of chapters across the canon', () => {
+    let withPlaces = 0;
+    let total = 0;
+    for (const book of BOOKS) {
+      for (let c = 1; c <= book.chapters; c += 1) {
+        total += 1;
+        if ((book.placesByChapter[c]?.length ?? 0) > 0) withPlaces += 1;
+      }
+    }
+    // Narrative-heavy books name places in most chapters; wisdom and epistles
+    // often do not. Half the canon's chapters carrying a place is a healthy floor.
+    expect(withPlaces / total).toBeGreaterThan(0.5);
+  });
+
+  it('lights up chapters that used to be blank — Genesis 10, the Table of Nations', () => {
+    const places = placesForBook('genesis', 10);
+    expect(places).not.toBeNull();
+    expect(places!.length).toBeGreaterThan(5);
   });
 });
 
@@ -162,8 +208,10 @@ describe('selectors', () => {
   });
 
   it('distinguishes a chapter with no places from a chapter that does not exist', () => {
-    expect(placesForBook('jonah', 2)).toEqual([]);
-    expect(placesForBook('jonah', 99)).toBeNull();
+    // 2 John is a one-chapter letter that names no geographic place, so it is a
+    // stable example of a genuinely empty (but indexed) chapter.
+    expect(placesForBook('2john', 1)).toEqual([]);
+    expect(placesForBook('2john', 2)).toBeNull();
     expect(placesForBook('nonexistent-book')).toBeNull();
   });
 

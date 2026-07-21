@@ -784,6 +784,18 @@ a {
   z-index: 4;
 }
 
+/* The empty-chapter notice sits centred at the top, clear of the confidence key
+   and the development basemap notice at the bottom. */
+.map-notice--book {
+  left: 50%;
+  right: auto;
+  bottom: auto;
+  top: 14px;
+  transform: translateX(-50%);
+  max-width: 22rem;
+  text-align: center;
+}
+
 .map-status {
   position: absolute;
   inset: 0;
