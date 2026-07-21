@@ -490,8 +490,11 @@ a {
   color: var(--color-neutral-100);
 }
 
+/* Chapters that name no place: still fully clickable, so they read as enabled
+   (normal text colour, same hover) — only a faint dashed border hints that the
+   chapter is empty. */
 .chapters__button--unindexed {
-  color: var(--color-neutral-500);
+  color: var(--color-neutral-700);
   border-style: dashed;
 }
 
