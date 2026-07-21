@@ -186,74 +186,13 @@ a {
 .atlas {
   display: grid;
   grid-template-columns: var(--rail-width) 1fr;
-  grid-template-rows: auto 1fr var(--timeline-height);
+  grid-template-rows: 1fr var(--timeline-height);
   grid-template-areas:
-    'mast mast'
     'rail map'
     'rail time';
   height: 100dvh;
   overflow: hidden;
   background: var(--color-bg);
-}
-
-.masthead {
-  grid-area: mast;
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 24px;
-  padding: 16px 26px 13px;
-  background: linear-gradient(180deg, var(--color-surface), color-mix(in srgb, var(--color-surface) 70%, var(--color-bg)));
-  border-bottom: 2px solid var(--color-neutral-800);
-}
-
-.masthead__brand {
-  display: flex;
-  align-items: flex-end;
-  gap: 16px;
-}
-
-.masthead__rose {
-  margin-bottom: 5px;
-  color: var(--color-accent-700);
-  flex-shrink: 0;
-}
-
-.masthead__title {
-  margin: 0;
-  font-size: 30px;
-  font-weight: 600;
-  line-height: 0.95;
-  letter-spacing: -0.01em;
-  color: var(--color-neutral-900);
-}
-
-.masthead__subtitle {
-  margin: 3px 0 0;
-  font-style: italic;
-  font-size: 14px;
-  color: var(--color-neutral-700);
-}
-
-.masthead__meta {
-  text-align: right;
-  padding-bottom: 3px;
-}
-
-.masthead__edition {
-  margin: 0;
-  font-family: var(--font-heading);
-  font-size: 10.5px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--color-neutral-600);
-}
-
-.masthead__tagline {
-  margin: 2px 0 0;
-  font-size: 12.5px;
-  font-style: italic;
-  color: var(--color-neutral-700);
 }
 
 .rail {
@@ -688,16 +627,6 @@ a {
   pointer-events: none;
   opacity: 0.5;
   z-index: 2;
-}
-
-.plate__compass {
-  position: absolute;
-  right: 22px;
-  bottom: 26px;
-  opacity: 0.8;
-  pointer-events: none;
-  z-index: 3;
-  color: var(--color-neutral-800);
 }
 
 .maplibregl-map {
@@ -1195,16 +1124,11 @@ a {
 @media (max-width: 60rem) {
   .atlas {
     grid-template-columns: 1fr;
-    grid-template-rows: auto minmax(0, 1fr) auto auto;
+    grid-template-rows: minmax(0, 1fr) auto auto;
     grid-template-areas:
-      'mast'
       'map'
       'time'
       'rail';
-  }
-
-  .masthead__meta {
-    display: none;
   }
 
   .rail {
@@ -1229,8 +1153,7 @@ a {
     top: 25%;
   }
 
-  .map-legend,
-  .plate__compass {
+  .map-legend {
     display: none;
   }
 

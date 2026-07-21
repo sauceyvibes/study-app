@@ -94,6 +94,19 @@ export function AtlasMap({
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-left');
     map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-right');
 
+    // The tile providers (Stadia, Stamen, OpenMapTiles, OpenStreetMap) require
+    // attribution, so the control stays — but collapsed to the compact "ⓘ"
+    // button rather than the expanded credit bar, which is the standard,
+    // licence-compliant way to keep it off the plate. One click still reveals
+    // the full credits. MapLibre renders the compact control as <details open>;
+    // closing it once after load is what minimises it.
+    map.once('load', () => {
+      const details = map
+        .getContainer()
+        .querySelector<HTMLDetailsElement>('details.maplibregl-ctrl-attrib');
+      if (details) details.open = false;
+    });
+
     map.on('error', (event) => {
       // Tile requests fail for all sorts of reasons — a gap in coverage, a rate
       // limit, an offline user. None of those should take the atlas down, since

@@ -14,7 +14,6 @@ import {
   placesForBook,
   journeysForBook,
   eventsNearYear,
-  ATLAS_COVERAGE,
 } from '@/atlas/corpus';
 import { JOURNEY_BY_ID } from '@/atlas/corpus';
 import { BOOK_BY_ID } from '@/atlas/data/books';
@@ -139,20 +138,6 @@ export function Atlas() {
 
   return (
     <div className="atlas">
-      <header className="masthead">
-        <div className="masthead__brand">
-          <CompassRose className="masthead__rose" size={34} />
-          <div>
-            <h1 className="masthead__title">Sacred Geography</h1>
-            <p className="masthead__subtitle">An historical atlas of the biblical world</p>
-          </div>
-        </div>
-        <div className="masthead__meta">
-          <p className="masthead__edition">First Edition · {ATLAS_COVERAGE.version}</p>
-          <p className="masthead__tagline">Places · People · Routes · Empires</p>
-        </div>
-      </header>
-
       <div className="rail">
         <div className="mode-switch" role="tablist" aria-label="Exploration mode">
           <button
@@ -258,8 +243,6 @@ export function Atlas() {
             <PlateGrain />
           </div>
 
-          <CompassRose className="plate__compass" size={56} withLetter />
-
           {polities.length > 0 && (
             <div className="map-legend">
               <p className="map-legend__title">Territory</p>
@@ -316,32 +299,6 @@ function PeriodDetail({ year }: { year: number }) {
       <p className="age__range">{formatYearRange(period.range.start, period.range.end)}</p>
       <p className="age__summary">{period.summary}</p>
     </section>
-  );
-}
-
-/**
- * The compass rose from the masthead of the approved design — reused at two
- * sizes, as the brand mark and as the plate's north indicator.
- */
-function CompassRose({ className, size, withLetter = false }: { className?: string; size: number; withLetter?: boolean }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 40 40" className={className} aria-hidden="true">
-      <circle cx="20" cy="20" r="18.5" fill="none" stroke="currentColor" strokeWidth="1.2" />
-      <circle cx="20" cy="20" r="13" fill="none" stroke="currentColor" strokeWidth="0.7" opacity="0.55" />
-      <path d="M20 2 L23 20 L20 38 L17 20 Z" fill="currentColor" />
-      <path d="M2 20 L20 17 L38 20 L20 23 Z" fill="currentColor" opacity="0.35" />
-      <circle cx="20" cy="20" r="1.8" fill="var(--color-surface)" />
-      {withLetter && (
-        <text
-          x="20"
-          y="-2"
-          textAnchor="middle"
-          style={{ fontFamily: 'var(--font-heading)', fontSize: '7px', fill: 'currentColor' }}
-        >
-          N
-        </text>
-      )}
-    </svg>
   );
 }
 
