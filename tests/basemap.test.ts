@@ -1,49 +1,55 @@
 import { describe, it, expect } from 'vitest';
-import { mapboxOutdoorsDusk, MAX_BOUNDS } from '../src/lib/basemap';
+import { stamenTerrain, resolveBasemap, MAX_BOUNDS } from '../src/lib/basemap';
 import { DECOR_LABELS } from '../src/lib/map-layers';
 
-describe('mapboxOutdoorsDusk', () => {
-  const style = mapboxOutdoorsDusk('pk.test-token');
-
-  function rasterSource() {
-    const source = style.sources['mapbox-outdoors'];
+describe('stamenTerrain', () => {
+  function rasterSource(style: ReturnType<typeof stamenTerrain>) {
+    const source = style.sources['stamen-terrain'];
     if (!source || source.type !== 'raster') throw new Error('expected a raster source');
     return source;
   }
 
-  it('requests the Outdoors style through the Static Tiles API with the token', () => {
-    const source = rasterSource();
-    const url = source.tiles?.[0] ?? '';
-    // The style id and the token are the two things a typo would silently break:
-    // wrong id serves a different map, missing token serves 401s (blank tiles).
-    expect(url).toContain('/styles/v1/mapbox/outdoors-v12/tiles/');
-    expect(url).toContain('access_token=pk.test-token');
-    expect(source.tileSize).toBe(512);
+  it('requests Stamen Terrain from the Stadia endpoint', () => {
+    const url = rasterSource(stamenTerrain()).tiles?.[0] ?? '';
+    // A wrong host or style id serves nothing; the @2x form matters because
+    // MapLibre cannot expand Leaflet's {r} retina placeholder.
+    expect(url).toContain('tiles.stadiamaps.com/tiles/stamen_terrain');
+    expect(url).toContain('@2x.png');
   });
 
-  it('carries the attribution Mapbox requires, including the feedback link', () => {
-    const source = rasterSource();
-    expect(source.attribution).toContain('mapbox.com');
-    expect(source.attribution).toContain('openstreetmap.org');
-    expect(source.attribution).toContain('Improve this map');
+  it('appends the api_key only when one is given', () => {
+    expect(rasterSource(stamenTerrain()).tiles?.[0]).not.toContain('api_key');
+    expect(rasterSource(stamenTerrain('sk-test')).tiles?.[0]).toContain('api_key=sk-test');
   });
 
-  it('applies the dusk grade over the tiles', () => {
-    const ids = style.layers.map((l) => l.id);
-    // Order matters: the washes must come after the raster to darken it.
-    expect(ids.indexOf('outdoors')).toBeGreaterThan(ids.indexOf('ground'));
-    expect(ids.indexOf('dusk-shade')).toBeGreaterThan(ids.indexOf('outdoors'));
-    expect(ids.indexOf('dusk-glow')).toBeGreaterThan(ids.indexOf('dusk-shade'));
+  it('uses 512-pixel tiles to match the @2x retina imagery', () => {
+    expect(rasterSource(stamenTerrain()).tileSize).toBe(512);
+  });
 
-    const raster = style.layers.find((l) => l.id === 'outdoors');
-    expect(raster?.type).toBe('raster');
-    const paint = (raster as { paint?: Record<string, unknown> }).paint ?? {};
-    // Dimmed highlights are what makes it dusk rather than a tint.
-    expect(paint['raster-brightness-max']).toBeLessThan(0.9);
+  it('carries the four-part attribution Stadia requires', () => {
+    const attribution = rasterSource(stamenTerrain()).attribution ?? '';
+    expect(attribution).toContain('Stadia Maps');
+    expect(attribution).toContain('Stamen');
+    expect(attribution).toContain('OpenMapTiles');
+    expect(attribution).toContain('openstreetmap.org');
+  });
+
+  it('grades the terrain over a parchment ground, ground first', () => {
+    const ids = stamenTerrain().layers.map((l) => l.id);
+    expect(ids.indexOf('terrain')).toBeGreaterThan(ids.indexOf('ground'));
   });
 
   it('declares a glyph endpoint so the atlas labels can render text', () => {
-    expect(style.glyphs).toBeTruthy();
+    expect(stamenTerrain().glyphs).toBeTruthy();
+  });
+});
+
+describe('resolveBasemap', () => {
+  it('defaults to keyless Stamen Terrain when nothing is configured', () => {
+    // The test environment sets none of the NEXT_PUBLIC_* basemap vars.
+    const config = resolveBasemap();
+    expect(config.provider).toBe('stamen-keyless');
+    expect(config.isKeyless).toBe(true);
   });
 });
 

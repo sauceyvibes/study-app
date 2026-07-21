@@ -3,48 +3,57 @@ import type { StyleSpecification } from 'maplibre-gl';
 /**
  * Basemap configuration.
  *
+ * The atlas draws on **Stamen Terrain**, the hillshaded relief cartography by
+ * Stamen Design, now hosted by Stadia Maps. Terrain relief is exactly what a
+ * historical atlas wants under it — the shape of the land is half the story of
+ * where cities sat and armies marched — and Stamen's earthy palette sits kindly
+ * inside the parchment plate.
+ *
  * Resolution order:
  *
- *   1. NEXT_PUBLIC_MAP_STYLE_URL — any MapLibre style URL you control. Escape
- *      hatch; takes precedence over everything.
- *   2. NEXT_PUBLIC_MAPBOX_TOKEN  — Mapbox Outdoors cartography at dusk. This is
- *      the intended production basemap; see the note below on how "dusk" is
- *      achieved.
- *   3. NEXT_PUBLIC_MAPTILER_KEY  — MapTiler landscape, a serviceable fallback.
- *   4. Nothing configured        — OpenStreetMap raster tiles, development only.
- *      The OSMF tile policy excludes production traffic, and the UI shows a
- *      notice while this fallback is active.
+ *   1. NEXT_PUBLIC_MAP_STYLE_URL   — any MapLibre style URL you control. Escape
+ *                                    hatch; wins over everything.
+ *   2. NEXT_PUBLIC_STADIA_API_KEY  — Stamen Terrain with an explicit Stadia key.
+ *                                    Use this for preview deploys whose domain
+ *                                    is not whitelisted, or to lift rate limits.
+ *   3. Nothing configured          — Stamen Terrain, keyless. This renders on
+ *                                    localhost out of the box and on any
+ *                                    production domain registered in the Stadia
+ *                                    dashboard. See the note below.
  *
- * ## Why Mapbox Outdoors arrives as raster tiles, and where "dusk" comes from
+ * ## On keyless use and going to production
  *
- * Mapbox's `dusk` light preset belongs to their *Standard* style and only runs
- * inside the proprietary `mapbox-gl` SDK, which refuses to draw anything —
- * including non-Mapbox fallbacks — without a token. Adopting it would have made
- * a Mapbox account a hard requirement for every contributor and swapped our
- * renderer for one we cannot use with the other providers.
+ * Stadia serves tiles without a key from `localhost`/`127.0.0.1`, so development
+ * needs no setup. For a public deployment you have two no-code options and one
+ * code option:
  *
- * The classic Outdoors style (`outdoors-v12`) — the one with the terrain
- * shading and contours an atlas actually wants — has no dusk variant at all.
+ *   - Register your Vercel domain under "Property Authentication" in the Stadia
+ *     dashboard. No key ever appears in the source — recommended for web apps.
+ *   - Or set NEXT_PUBLIC_STADIA_API_KEY (works anywhere, including previews).
  *
- * So we take Outdoors through Mapbox's **Static Tiles API**, which is the
- * documented, billed path for third-party renderers, and grade it to dusk in
- * the style layer: desaturated, dimmed toward the horizon, and washed with a
- * violet shade and an amber glow. The result is Mapbox Outdoors cartography
- * with an evening cast, rendered by MapLibre like every other option here.
+ * Keyless traffic from an unregistered production domain is rate-limited and
+ * will eventually 429. The UI shows a quiet notice while running keyless so this
+ * is never a surprise in production.
+ *
+ * ## Which Stamen Terrain layer
+ *
+ * We use `stamen_terrain_background`: the relief and water without Stamen's own
+ * roads and place labels. This atlas supplies its own gazetteer labels, routes
+ * and territory, and modern road names bleeding through under ancient sites
+ * would fight all of it. To use the full labelled style instead, change
+ * STAMEN_STYLE below to 'stamen_terrain'.
  */
 
-const OSM_ATTRIBUTION = '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+/** Stamen layer id. `stamen_terrain` for the fully labelled variant. */
+const STAMEN_STYLE = 'stamen_terrain_background';
 
-/**
- * Mapbox requires this attribution wording, including the feedback link, when
- * its tiles are displayed. Do not trim it.
- */
-const MAPBOX_ATTRIBUTION =
-  '© <a href="https://www.mapbox.com/about/maps/">Mapbox</a> © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> <strong><a href="https://apps.mapbox.com/feedback/" target="_blank" rel="noreferrer">Improve this map</a></strong>';
+/** Stadia requires this wording, with all four links, wherever the tiles show. */
+const STAMEN_ATTRIBUTION =
+  "© <a href='https://stadiamaps.com/'>Stadia Maps</a> © <a href='https://stamen.com/'>Stamen Design</a> © <a href='https://openmaptiles.org/'>OpenMapTiles</a> © <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a>";
 
 /**
  * MapLibre needs a glyph endpoint before any symbol layer of ours can render
- * text; raster sources bring no glyphs of their own.
+ * text; a raster source brings no glyphs of its own.
  */
 const GLYPHS_URL = 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf';
 
@@ -52,116 +61,75 @@ const GLYPHS_URL = 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf'
 const GROUND_COLOR = '#f4ecd9';
 
 /**
- * The dusk grade for Outdoors: mute the daylight palette, pull the highlights
- * down, and lean the hue slightly toward evening. The violet/amber wash layers
- * in `mapboxOutdoorsDusk` do the rest.
+ * A light warm grade so Stamen's relief marries the parchment frame without
+ * losing its character. Far gentler than a full recolour — the terrain should
+ * still read, at a glance, as Stamen Terrain.
  */
-const DUSK_RASTER_PAINT = {
-  'raster-saturation': -0.2,
-  'raster-contrast': 0.12,
-  'raster-brightness-min': 0.06,
-  'raster-brightness-max': 0.78,
-  'raster-hue-rotate': -8,
-} as const;
-
-/** Aged-paper treatment for the OSM development fallback. */
-const AGED_RASTER_PAINT = {
-  'raster-saturation': -0.55,
-  'raster-contrast': 0.08,
-  'raster-brightness-min': 0.12,
-  'raster-brightness-max': 0.94,
-  'raster-hue-rotate': 12,
-  'raster-opacity': 0.82,
+const TERRAIN_RASTER_PAINT = {
+  'raster-saturation': -0.12,
+  'raster-contrast': 0.05,
+  'raster-brightness-min': 0.04,
+  'raster-brightness-max': 0.96,
+  'raster-hue-rotate': 8,
 } as const;
 
 /**
- * Mapbox Outdoors via the Static Tiles API, graded to dusk.
+ * Stamen Terrain (via Stadia) as a MapLibre style, with the parchment grade.
  *
- * Exported for the test suite: the URL template and the grading layers are the
- * contract here, and a typo in either fails silently at runtime (blank tiles or
- * a daylight map), which is exactly the kind of failure tests exist to catch.
+ * Exported for the test suite: the tile URL and the key handling are the
+ * contract, and a typo in either fails silently at runtime — a blank plate, or
+ * a key that never reaches the server — which is exactly what tests are for.
+ *
+ * The `@2x` retina tiles are used with `tileSize: 512`; MapLibre does not expand
+ * Leaflet's `{r}` placeholder, so the explicit `@2x` form is required.
  */
-export function mapboxOutdoorsDusk(token: string): StyleSpecification {
+export function stamenTerrain(apiKey?: string): StyleSpecification {
+  const query = apiKey ? `?api_key=${apiKey}` : '';
   return {
     version: 8,
     glyphs: GLYPHS_URL,
     sources: {
-      'mapbox-outdoors': {
+      'stamen-terrain': {
         type: 'raster',
-        tiles: [
-          `https://api.mapbox.com/styles/v1/mapbox/outdoors-v12/tiles/512/{z}/{x}/{y}@2x?access_token=${token}`,
-        ],
+        tiles: [`https://tiles.stadiamaps.com/tiles/${STAMEN_STYLE}/{z}/{x}/{y}@2x.png${query}`],
         tileSize: 512,
         maxzoom: 16,
-        attribution: MAPBOX_ATTRIBUTION,
+        attribution: STAMEN_ATTRIBUTION,
       },
     },
     layers: [
       { id: 'ground', type: 'background', paint: { 'background-color': GROUND_COLOR } },
-      { id: 'outdoors', type: 'raster', source: 'mapbox-outdoors', paint: { ...DUSK_RASTER_PAINT } },
-      // Twilight, in two washes: a violet shade over everything, then a faint
-      // amber warmth as the light on the horizon.
-      { id: 'dusk-shade', type: 'background', paint: { 'background-color': '#2e2440', 'background-opacity': 0.18 } },
-      { id: 'dusk-glow', type: 'background', paint: { 'background-color': '#c97b2a', 'background-opacity': 0.08 } },
+      { id: 'terrain', type: 'raster', source: 'stamen-terrain', paint: { ...TERRAIN_RASTER_PAINT } },
     ],
   };
 }
 
-function osmFallbackStyle(): StyleSpecification {
-  return {
-    version: 8,
-    glyphs: GLYPHS_URL,
-    sources: {
-      osm: {
-        type: 'raster',
-        tiles: [
-          'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
-          'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
-          'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png',
-        ],
-        tileSize: 256,
-        maxzoom: 19,
-        attribution: OSM_ATTRIBUTION,
-      },
-    },
-    layers: [
-      { id: 'ground', type: 'background', paint: { 'background-color': GROUND_COLOR } },
-      { id: 'osm', type: 'raster', source: 'osm', paint: { ...AGED_RASTER_PAINT } },
-    ],
-  };
-}
-
-export type BasemapProvider = 'custom' | 'mapbox-dusk' | 'maptiler' | 'osm-fallback';
+export type BasemapProvider = 'custom' | 'stamen-key' | 'stamen-keyless';
 
 export interface BasemapConfig {
   /** Either a style URL for MapLibre to fetch, or an inline style object. */
   style: string | StyleSpecification;
   provider: BasemapProvider;
-  /** True when we are on the development fallback, so the UI can say so. */
-  isDevelopmentFallback: boolean;
+  /**
+   * True when serving Stamen tiles with no key. Fine for development; for a
+   * public deployment the domain should be whitelisted or a key set. The UI
+   * surfaces this.
+   */
+  isKeyless: boolean;
 }
 
 export function resolveBasemap(): BasemapConfig {
   const explicit = process.env.NEXT_PUBLIC_MAP_STYLE_URL;
   if (explicit) {
-    return { style: explicit, provider: 'custom', isDevelopmentFallback: false };
+    return { style: explicit, provider: 'custom', isKeyless: false };
   }
 
-  const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
-  if (mapboxToken) {
-    return { style: mapboxOutdoorsDusk(mapboxToken), provider: 'mapbox-dusk', isDevelopmentFallback: false };
+  const stadiaKey = process.env.NEXT_PUBLIC_STADIA_API_KEY;
+  if (stadiaKey) {
+    return { style: stamenTerrain(stadiaKey), provider: 'stamen-key', isKeyless: false };
   }
 
-  const maptilerKey = process.env.NEXT_PUBLIC_MAPTILER_KEY;
-  if (maptilerKey) {
-    return {
-      style: `https://api.maptiler.com/maps/landscape/style.json?key=${maptilerKey}`,
-      provider: 'maptiler',
-      isDevelopmentFallback: false,
-    };
-  }
-
-  return { style: osmFallbackStyle(), provider: 'osm-fallback', isDevelopmentFallback: true };
+  return { style: stamenTerrain(), provider: 'stamen-keyless', isKeyless: true };
 }
 
 /** The biblical world, as an initial viewport. */

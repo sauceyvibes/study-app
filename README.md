@@ -43,30 +43,35 @@ This is a working application on a curated corpus, not a finished atlas.
   render with a dashed outline rather than being silently shown as empty.
 - **Routes are static arcs.** Animating them along the path is a next step and
   needs no data changes.
-- **The default basemap is not licensed for production traffic.** See below.
+- **Going public needs a one-time Stadia Maps step.** See below.
 
 ## The basemap
 
-The production basemap is **Mapbox Outdoors at dusk**: Outdoors cartography
-served through Mapbox's Static Tiles API (their documented path for third-party
-renderers), graded to evening in the style layer. Mapbox's own `dusk` light
-preset belongs to their Standard style and runs only inside their proprietary
-SDK, which refuses to render anything without a token — so this route keeps the
-dusk look without making a Mapbox account a hard requirement to develop the app.
+The atlas draws on **Stamen Terrain** — Stamen Design's hillshaded relief
+cartography, now hosted by Stadia Maps — lightly warm-graded to sit inside the
+parchment plate. Terrain relief is what a historical atlas wants underneath it:
+the shape of the land is half the story of where cities sat and armies moved.
+
+It renders **keyless on `localhost`**, so development needs no setup at all.
+Specifically we use the `stamen_terrain_background` layer (relief and water,
+without Stamen's own roads and modern labels) so it doesn't fight the atlas's
+own gazetteer labels; to use the fully labelled style, change `STAMEN_STYLE` in
+`src/lib/basemap.ts` to `stamen_terrain`.
+
+For a **public deployment**, do one of (either is free, no credit card):
+
+- Register your domain under *Property Authentication* in the
+  [Stadia Maps dashboard](https://client.stadiamaps.com) — no key in the code,
+  recommended for web apps; or
+- set `NEXT_PUBLIC_STADIA_API_KEY` (works anywhere, including Vercel previews).
 
 ```
-NEXT_PUBLIC_MAPBOX_TOKEN=pk....          # Mapbox Outdoors, dusk-graded (intended)
-NEXT_PUBLIC_MAP_STYLE_URL=https://...    # or any MapLibre style you control
-NEXT_PUBLIC_MAPTILER_KEY=...             # or a MapTiler key
+NEXT_PUBLIC_STADIA_API_KEY=...           # Stamen Terrain in production
+NEXT_PUBLIC_MAP_STYLE_URL=https://...    # or override with any MapLibre style
 ```
 
-Get a token at account.mapbox.com (the free tier is ample); add it to
-`.env.local` for development and to Vercel under Project → Settings →
-Environment Variables for production, then redeploy.
-
-Without any of these, the app falls back to OpenStreetMap Foundation tiles,
-whose usage policy excludes production applications; the map shows a notice
-while that fallback is active.
+Until one of those is in place, keyless traffic from an unregistered production
+domain is rate-limited; the map shows a quiet notice while running keyless.
 
 Deploying to Vercel otherwise needs no configuration — every route prerenders to
 static HTML, and `vercel.json` pins the framework preset so the build does not

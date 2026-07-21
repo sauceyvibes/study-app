@@ -250,11 +250,11 @@ export function AtlasMap({
         </div>
       )}
 
-      {status === 'ready' && basemap.isDevelopmentFallback && (
+      {status === 'ready' && basemap.isKeyless && (
         <p className="map-notice">
-          Development basemap. Set <code>NEXT_PUBLIC_MAPBOX_TOKEN</code> to draw the Mapbox
-          Outdoors dusk basemap; these OpenStreetMap tiles are not licensed for production
-          traffic — see <code>src/lib/basemap.ts</code>.
+          Stamen Terrain, served keyless — fine on localhost. For a public deployment, whitelist
+          the domain in the Stadia Maps dashboard or set <code>NEXT_PUBLIC_STADIA_API_KEY</code>,
+          or keyless traffic will be rate-limited.
         </p>
       )}
     </>
