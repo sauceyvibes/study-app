@@ -114,7 +114,7 @@ inscription or excavation report, the entry says which.
 npm test
 ```
 
-60 tests. The most valuable are the corpus integrity checks: the data files are
+63 tests. The most valuable are the corpus integrity checks: the data files are
 hand-written, so the realistic failure is not a logic bug but a typo in an id —
 a journey leg pointing at a site that does not exist, a chapter index referencing
 a chapter the book does not have. Those would fail silently at runtime as an
