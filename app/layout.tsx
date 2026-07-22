@@ -2,13 +2,13 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Sacred Geography — An Historical Atlas of the Bible',
+  title: 'interactive bible map — An Historical Atlas of the Bible',
   description:
     'An interactive historical atlas of the biblical world: places, people, routes and empires from the patriarchal age to the apostolic mission, with sources and scholarly uncertainty shown rather than hidden.',
-  applicationName: 'Sacred Geography',
-  authors: [{ name: 'Sacred Geography' }],
+  applicationName: 'interactive bible map',
+  authors: [{ name: 'Kai Rodden' }],
   openGraph: {
-    title: 'Sacred Geography',
+    title: 'interactive bible map',
     description: 'An interactive historical atlas of the biblical world.',
     type: 'website',
   },
