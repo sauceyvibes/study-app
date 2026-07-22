@@ -77,6 +77,8 @@ export function placesToGeoJSON(
 export interface RouteFeatureProps {
   journeyId: string;
   journeyName: string;
+  /** The journey's identifying colour, drawn data-driven by the route layers. */
+  color: string;
   mode: 'land' | 'sea' | 'inferred';
   legIndex: number;
 }
@@ -146,6 +148,7 @@ export function journeysToGeoJSON(journeys: Journey[]): FeatureCollection<LineSt
         properties: {
           journeyId: journey.id,
           journeyName: journey.name,
+          color: journey.color,
           mode: leg.mode,
           legIndex,
         },

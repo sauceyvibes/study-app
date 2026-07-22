@@ -74,7 +74,8 @@ export function JourneyPanel({ journeyId, onClose, onSelectPlace, onSelectPerson
         Close ✕
       </button>
 
-      <p className="label label--accent" style={{ margin: '0 0 2px' }}>
+      <p className="label label--accent" style={{ margin: '0 0 2px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <RouteSwatch mode="land" color={journey.color} />
         Route
       </p>
       <h2 className="panel__name">{journey.name}</h2>
@@ -148,7 +149,7 @@ export function JourneyPanel({ journeyId, onClose, onSelectPlace, onSelectPerson
                 <button type="button" className="inline-link" onClick={() => onSelectPlace(leg.fromPlace)}>
                   {placeName(leg.fromPlace)}
                 </button>
-                <RouteSwatch mode={leg.mode} />
+                <RouteSwatch mode={leg.mode} color={journey.color} />
                 <button type="button" className="inline-link" onClick={() => onSelectPlace(leg.toPlace)}>
                   {placeName(leg.toPlace)}
                 </button>

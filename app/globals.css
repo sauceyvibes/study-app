@@ -443,6 +443,34 @@ a {
   color: var(--color-accent-700);
 }
 
+/* The selected book's heading, with a deselect control aligned to its right. */
+.book__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.book__clear {
+  flex-shrink: 0;
+  margin-top: 2px;
+  padding: 2px 8px;
+  font-family: var(--font-heading);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-neutral-600);
+  background: none;
+  border: 1px solid var(--color-neutral-400);
+  border-radius: 999px;
+  transition: border-color 120ms ease, color 120ms ease;
+}
+
+.book__clear:hover {
+  color: var(--color-accent-700);
+  border-color: var(--color-accent-500);
+}
+
 .book__name {
   margin: 0;
   font-size: 22px;
@@ -1206,6 +1234,36 @@ a {
 /* A route line sample, drawn with the same stroke the map uses. */
 .map-legend__route {
   flex-shrink: 0;
+}
+
+/* Each route in the key is a button that opens (and highlights) that journey. */
+.map-legend__list--routes li {
+  display: block;
+  margin-bottom: 3px;
+}
+
+.map-legend__route-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 3px 4px;
+  text-align: left;
+  background: none;
+  border-radius: 4px;
+  color: var(--color-neutral-800);
+  line-height: 1.3;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.map-legend__route-row:hover {
+  background: color-mix(in srgb, var(--color-accent-300) 22%, transparent);
+  color: var(--color-neutral-900);
+}
+
+.map-legend__route-row[aria-pressed='true'] {
+  color: var(--color-accent-700);
+  background: color-mix(in srgb, var(--color-accent-300) 30%, transparent);
 }
 
 /* ── Fullscreen: keep the keys on the plate ──────────────────────────────── */

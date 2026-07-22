@@ -31,6 +31,12 @@ describe('journey helpers', () => {
     expect(placesForJourney(journey).length).toBe(ids.length);
   });
 
+  it('gives every journey its own colour so overlapping routes stay legible', () => {
+    const colors = JOURNEYS.map((j) => j.color);
+    for (const color of colors) expect(color, 'hex colour').toMatch(/^#[0-9a-f]{6}$/i);
+    expect(new Set(colors).size, 'colours are distinct').toBe(colors.length);
+  });
+
   it('every journey has a real traveller and locatable legs', () => {
     for (const journey of JOURNEYS) {
       expect(PERSON_BY_ID.has(journey.traveler), `${journey.id} traveller`).toBe(true);

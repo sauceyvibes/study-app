@@ -8,6 +8,7 @@ interface BookNavigatorProps {
   bookId: string | null;
   chapter: number | null;
   onSelectBook: (bookId: string) => void;
+  onClearBook: () => void;
   onSelectChapter: (chapter: number | null) => void;
 }
 
@@ -23,7 +24,7 @@ const DIVISIONS = ['Torah', 'Historical', 'Wisdom', 'Prophets', 'Gospels', 'Lett
  * Collapsing the last two would quietly tell the reader that Genesis 30 mentions
  * no places, which is not something we know.
  */
-export function BookNavigator({ bookId, chapter, onSelectBook, onSelectChapter }: BookNavigatorProps) {
+export function BookNavigator({ bookId, chapter, onSelectBook, onClearBook, onSelectChapter }: BookNavigatorProps) {
   const selected = bookId ? BOOK_BY_ID.get(bookId) : undefined;
 
   return (
@@ -42,7 +43,10 @@ export function BookNavigator({ bookId, chapter, onSelectBook, onSelectChapter }
                     type="button"
                     className="books__button"
                     aria-pressed={meta.id === bookId}
-                    onClick={() => onSelectBook(meta.id)}
+                    // Clicking the chosen book again clears the selection, so a
+                    // reader can back out to the whole-canon view.
+                    onClick={() => (meta.id === bookId ? onClearBook() : onSelectBook(meta.id))}
+                    title={meta.id === bookId ? 'Click to deselect' : undefined}
                   >
                     {meta.name}
                   </button>
@@ -53,7 +57,9 @@ export function BookNavigator({ bookId, chapter, onSelectBook, onSelectChapter }
         );
       })}
 
-      {selected && <ChapterPicker book={selected} chapter={chapter} onSelectChapter={onSelectChapter} />}
+      {selected && (
+        <ChapterPicker book={selected} chapter={chapter} onSelectChapter={onSelectChapter} onClearBook={onClearBook} />
+      )}
     </section>
   );
 }
@@ -62,10 +68,12 @@ function ChapterPicker({
   book,
   chapter,
   onSelectChapter,
+  onClearBook,
 }: {
   book: BookMeta;
   chapter: number | null;
   onSelectChapter: (chapter: number | null) => void;
+  onClearBook: () => void;
 }) {
   const chapters = Array.from({ length: book.chapters }, (_, i) => i + 1);
 
@@ -73,10 +81,17 @@ function ChapterPicker({
     <>
       <hr className="rule-double" />
 
-      <p className="label label--accent" style={{ margin: '0 0 2px' }}>
-        Book of
-      </p>
-      <h3 className="book__name">{book.name}</h3>
+      <div className="book__head">
+        <div>
+          <p className="label label--accent" style={{ margin: '0 0 2px' }}>
+            Book of
+          </p>
+          <h3 className="book__name">{book.name}</h3>
+        </div>
+        <button type="button" className="book__clear" onClick={onClearBook}>
+          Deselect ✕
+        </button>
+      </div>
       <p className="book__range">
         Set in {formatYearRange(book.narrativeRange.start, book.narrativeRange.end)}
       </p>

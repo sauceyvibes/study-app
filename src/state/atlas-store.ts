@@ -42,6 +42,8 @@ interface AtlasState {
   setYear: (year: number) => void;
   setMode: (mode: ExplorationMode) => void;
   selectBook: (bookId: string, chapter?: number | null) => void;
+  /** Deselect the current book, staying in book mode with nothing chosen. */
+  clearBook: () => void;
   setChapter: (chapter: number | null) => void;
   selectPlace: (placeId: string | null) => void;
   selectPerson: (personId: string | null) => void;
@@ -88,6 +90,8 @@ export const useAtlas = create<AtlasState>((set, get) => ({
 
     set({ mode: 'book', bookId, chapter, year: midpoint, selectedPlaceId: null, selectedPersonId: null, selectedJourneyId: null });
   },
+
+  clearBook: () => set({ bookId: null, chapter: null }),
 
   setChapter: (chapter) => {
     const { bookId } = get();

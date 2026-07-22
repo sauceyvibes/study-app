@@ -18,6 +18,7 @@ export const JOURNEYS: Journey[] = [
     summary:
       'From Ur up the Euphrates to Harran, then south along the ridge route through Canaan, into Egypt during a famine, and back to the Negev. The route follows the Fertile Crescent because the direct line across the Syrian desert was not passable for herds.',
     routeConfidence: 'conjectural',
+    color: '#9a3b2e',
     legs: [
       { fromPlace: 'ur', toPlace: 'harran', mode: 'inferred', scripture: [{ book: 'genesis', chapter: 11, verse: 31 }], note: 'The route up the Euphrates is implied rather than described. If Ur is the northern city, this leg is short.' },
       { fromPlace: 'harran', toPlace: 'shechem', mode: 'land', scripture: [{ book: 'genesis', chapter: 12, verse: 4, verseEnd: 6 }] },
@@ -44,6 +45,7 @@ export const JOURNEYS: Journey[] = [
     summary:
       'From Rameses to the sea, to the mountain of the covenant, to Kadesh-barnea, and finally around Edom to the plains of Moab. Numbers 33 lists over forty stations; most cannot be located, and the route drawn here connects only the fixed points the atlas can defend. It should be read as a sketch of the journey\'s shape, not as a survey of the path taken.',
     routeConfidence: 'conjectural',
+    color: '#b07a1f',
     legs: [
       { fromPlace: 'rameses', toPlace: 'red-sea-crossing', mode: 'land', scripture: [{ book: 'exodus', chapter: 13, verse: 20, verseEnd: 22 }] },
       { fromPlace: 'red-sea-crossing', toPlace: 'mount-sinai', mode: 'inferred', scripture: [{ book: 'exodus', chapter: 19, verse: 1, verseEnd: 2 }], note: 'The southern route shown assumes the traditional Jebel Musa identification. Northern and Arabian candidates imply substantially different paths.' },
@@ -71,6 +73,7 @@ export const JOURNEYS: Journey[] = [
     summary:
       'Sent out from Antioch with Barnabas, across Cyprus and up into the highlands of southern Asia Minor, then back the way they came to strengthen the new congregations.',
     routeConfidence: 'probable',
+    color: '#2f7d70',
     legs: [
       { fromPlace: 'antioch-syria', toPlace: 'paphos', mode: 'sea', scripture: [{ book: 'acts', chapter: 13, verse: 4, verseEnd: 6 }] },
       { fromPlace: 'paphos', toPlace: 'antioch-pisidia', mode: 'sea', scripture: [{ book: 'acts', chapter: 13, verse: 13, verseEnd: 14 }], note: 'By sea to Perga in Pamphylia, then inland; the atlas draws the leg to the next place it holds.' },
@@ -95,6 +98,7 @@ export const JOURNEYS: Journey[] = [
     summary:
       'Overland through Asia Minor to Troas, then across to Macedonia and down into Greece — the crossing into Europe. Ends with eighteen months at Corinth, the stretch the Gallio inscription dates.',
     routeConfidence: 'probable',
+    color: '#9c3f74',
     legs: [
       { fromPlace: 'antioch-syria', toPlace: 'iconium', mode: 'land', scripture: [{ book: 'acts', chapter: 15, verse: 40 }, { book: 'acts', chapter: 16, verse: 1 }] },
       { fromPlace: 'iconium', toPlace: 'troas', mode: 'land', scripture: [{ book: 'acts', chapter: 16, verse: 6, verseEnd: 8 }] },
@@ -125,6 +129,7 @@ export const JOURNEYS: Journey[] = [
     summary:
       'Dominated by more than two years at Ephesus, the longest settled ministry of his career, followed by a circuit of the Macedonian and Greek congregations and a return to Jerusalem with the collection.',
     routeConfidence: 'probable',
+    color: '#3a5a9c',
     legs: [
       { fromPlace: 'antioch-syria', toPlace: 'ephesus', mode: 'land', scripture: [{ book: 'acts', chapter: 18, verse: 23 }, { book: 'acts', chapter: 19, verse: 1 }] },
       { fromPlace: 'ephesus', toPlace: 'philippi', mode: 'sea', scripture: [{ book: 'acts', chapter: 20, verse: 1 }] },
@@ -153,6 +158,7 @@ export const JOURNEYS: Journey[] = [
     summary:
       'Sent from Caesarea under guard after appealing to Caesar, driven off course past Crete, wrecked on Malta, and finally landed at Puteoli for the road to Rome. Acts 27 is the most detailed account of an ancient sea voyage to survive from antiquity.',
     routeConfidence: 'probable',
+    color: '#b5652c',
     legs: [
       { fromPlace: 'caesarea-maritima', toPlace: 'sidon', mode: 'sea', scripture: [{ book: 'acts', chapter: 27, verse: 3 }] },
       { fromPlace: 'sidon', toPlace: 'miletus', mode: 'sea', scripture: [{ book: 'acts', chapter: 27, verse: 4, verseEnd: 5 }], note: 'The ship coasted Cilicia and Pamphylia to Myra, where the party transferred to an Alexandrian grain ship; the atlas draws the leg to the nearest place it holds.' },

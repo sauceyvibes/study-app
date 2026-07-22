@@ -32,9 +32,10 @@ hands off to the desktop, mobile or web reader). Rest on one for half a second
 and a card summarises what happens in the chapter and which places it names.
 
 **A key that matches the plate.** The floating map key decodes both the territory
-washes and the route lines — overland, by sea, and inferred connections drawn
-exactly as the map draws them — and it rides along into fullscreen, where the
-confidence key stays pinned in the lower corner too.
+washes and the routes — each journey drawn in its own colour, solid for the real
+legs and dashed only where a connection is inferred, and listed by name in the key
+(click one to open it). The key rides along into fullscreen, where the confidence
+key stays pinned in the lower corner too.
 
 **Routes open like places.** Click a route on the map (or search one) and a panel
 gives its span in years, its start and end, who travelled it, and how much of the
@@ -145,7 +146,7 @@ inscription or excavation report, the entry says which.
 npm test
 ```
 
-82 tests. The most valuable are the corpus integrity checks: the data files are
+83 tests. The most valuable are the corpus integrity checks: the data files are
 hand-written, so the realistic failure is not a logic bug but a typo in an id —
 a journey leg pointing at a site that does not exist, a chapter index referencing
 a chapter the book does not have. Those would fail silently at runtime as an

@@ -8,7 +8,7 @@ import { BookNavigator } from './BookNavigator';
 import { PlacePanel } from './PlacePanel';
 import { PersonPanel } from './PersonPanel';
 import { JourneyPanel } from './JourneyPanel';
-import { RouteSwatch, ROUTE_LABEL } from './RouteGlyph';
+import { RouteSwatch } from './RouteGlyph';
 import { Timeline } from './Timeline';
 import {
   placesAtYear,
@@ -66,6 +66,7 @@ export function Atlas() {
   const setYear = useAtlas((s) => s.setYear);
   const setMode = useAtlas((s) => s.setMode);
   const selectBook = useAtlas((s) => s.selectBook);
+  const clearBook = useAtlas((s) => s.clearBook);
   const setChapter = useAtlas((s) => s.setChapter);
   const selectPlace = useAtlas((s) => s.selectPlace);
   const selectPerson = useAtlas((s) => s.selectPerson);
@@ -109,14 +110,14 @@ export function Atlas() {
 
   const polities = useMemo(() => (showPolities ? politiesAtYear(year) : []), [showPolities, year]);
 
-  // Which travel modes are actually drawn right now, so the legend explains the
-  // lines the reader is looking at and nothing else. The legend appears whenever
-  // there is territory or a route on the plate to decode.
-  const routeModes = useMemo(
-    () => (['land', 'sea', 'inferred'] as const).filter((m) => journeys.some((j) => j.legs.some((l) => l.mode === m))),
+  // Whether any drawn journey has an inferred (dashed) leg, so the key can gloss
+  // the dashed style only when it is actually on the plate. The legend appears
+  // whenever there is territory or a route to decode.
+  const hasInferredLeg = useMemo(
+    () => journeys.some((j) => j.legs.some((l) => l.mode === 'inferred')),
     [journeys],
   );
-  const showLegend = polities.length > 0 || routeModes.length > 0;
+  const showLegend = polities.length > 0 || journeys.length > 0;
 
   // Choosing a book (or chapter) re-frames the map around that book's places —
   // picking Acts must carry the reader to the Aegean, not leave them parked
@@ -218,6 +219,7 @@ export function Atlas() {
               bookId={bookId}
               chapter={chapter}
               onSelectBook={(id) => selectBook(id)}
+              onClearBook={clearBook}
               onSelectChapter={setChapter}
             />
           ) : (
@@ -331,17 +333,26 @@ export function Atlas() {
                   </button>
                 </div>
 
-                {routeModes.length > 0 && (
+                {journeys.length > 0 && (
                   <div className="map-legend__group">
                     <p className="map-legend__subtitle">Routes</p>
-                    <ul className="map-legend__list">
-                      {routeModes.map((mode) => (
-                        <li key={mode}>
-                          <RouteSwatch mode={mode} />
-                          {ROUTE_LABEL[mode]}
+                    <ul className="map-legend__list map-legend__list--routes">
+                      {journeys.map((journey) => (
+                        <li key={journey.id}>
+                          <button
+                            type="button"
+                            className="map-legend__route-row"
+                            onClick={() => handleSelectJourney(journey.id)}
+                            aria-pressed={journey.id === selectedJourneyId}
+                            title={`Open ${journey.name}`}
+                          >
+                            <RouteSwatch mode="land" color={journey.color} />
+                            {journey.name}
+                          </button>
                         </li>
                       ))}
                     </ul>
+                    {hasInferredLeg && <p className="map-legend__note">Dashed segments are inferred.</p>}
                   </div>
                 )}
 

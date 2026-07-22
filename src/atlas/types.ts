@@ -193,6 +193,12 @@ export interface Journey {
   scripture: ScriptureRef[];
   /** Honest statement of how firm the route reconstruction is. */
   routeConfidence: Confidence;
+  /**
+   * The line colour that identifies this route on the map and in the key. Each
+   * journey gets its own hue so overlapping itineraries (Paul's four) stay
+   * legible; travel mode is shown by line style, not colour.
+   */
+  color: string;
   sources: SourceNote[];
 }
 

@@ -20,8 +20,8 @@ interface AtlasMapProps {
   onSelectJourney: (journeyId: string) => void;
 }
 
-/** Route layers, listed where a click or hover query needs all three at once. */
-const ROUTE_LAYERS = ['route-line-land', 'route-line-sea', 'route-line-inferred'] as const;
+/** Route layers, listed where a click or hover query needs both at once. */
+const ROUTE_LAYERS = ['route-line-solid', 'route-line-inferred'] as const;
 
 const SOURCES = { places: 'atlas-places', routes: 'atlas-routes', polities: 'atlas-polities', decor: 'atlas-decor' } as const;
 
@@ -425,12 +425,14 @@ function installLayers(map: MapLibreMap): void {
     },
   });
 
-  // Routes — one layer per travel mode. This is not a stylistic choice:
-  // `line-dasharray` cannot be data-driven in MapLibre, and a layer that tries
-  // is rejected in its entirety (surfaced only as an error event), which is
-  // exactly how routes silently failed to draw before this was split.
+  // Routes are coloured per journey (data-driven from `color`), so overlapping
+  // itineraries stay legible. Travel mode is carried by line *style*, not colour:
+  // real legs — overland or by sea — are solid, and only an inferred connection is
+  // drawn dashed to mark it as reconstructed. Two layers rather than one because
+  // `line-dasharray` cannot be data-driven in MapLibre; a single layer that tried
+  // would be rejected whole (surfaced only as an error event).
   const routeWidth: maplibregl.DataDrivenPropertyValueSpecification<number> = [
-    'interpolate', ['linear'], ['zoom'], 4, 1.4, 10, 2.6,
+    'interpolate', ['linear'], ['zoom'], 4, 1.6, 10, 2.8,
   ];
 
   // A soft gilt glow beneath the selected journey's legs, so a clicked route
@@ -450,29 +452,17 @@ function installLayers(map: MapLibreMap): void {
     },
   });
 
+  // Solid line for the real legs — overland and by sea alike.
   map.addLayer({
-    id: 'route-line-land',
+    id: 'route-line-solid',
     type: 'line',
     source: SOURCES.routes,
-    filter: ['==', ['get', 'mode'], 'land'],
+    filter: ['!=', ['get', 'mode'], 'inferred'],
     layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: { 'line-color': INK.accent, 'line-width': routeWidth, 'line-opacity': 0.85 },
+    paint: { 'line-color': ['get', 'color'], 'line-width': routeWidth, 'line-opacity': 0.9 },
   });
 
-  map.addLayer({
-    id: 'route-line-sea',
-    type: 'line',
-    source: SOURCES.routes,
-    filter: ['==', ['get', 'mode'], 'sea'],
-    layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: {
-      'line-color': INK.accent2,
-      'line-width': routeWidth,
-      'line-opacity': 0.85,
-      'line-dasharray': [6, 3],
-    },
-  });
-
+  // Dashed for inferred connections the text implies without naming the road.
   map.addLayer({
     id: 'route-line-inferred',
     type: 'line',
@@ -480,9 +470,9 @@ function installLayers(map: MapLibreMap): void {
     filter: ['==', ['get', 'mode'], 'inferred'],
     layout: { 'line-cap': 'round', 'line-join': 'round' },
     paint: {
-      'line-color': INK.neutral,
+      'line-color': ['get', 'color'],
       'line-width': routeWidth,
-      'line-opacity': 0.8,
+      'line-opacity': 0.85,
       'line-dasharray': [2, 3],
     },
   });
