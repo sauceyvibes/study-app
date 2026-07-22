@@ -233,26 +233,50 @@ export function Atlas() {
             Show kingdoms and empires
           </label>
 
-          {availableJourneys.length > 0 && (
-            <>
-              <p className="label" style={{ margin: '18px 0 7px' }}>
-                Routes in this age
-              </p>
-              <ul className="chips">
-                {availableJourneys.map((journey) => (
-                  <li className="chips__item" key={journey.id}>
-                    <button
-                      type="button"
-                      onClick={() => toggleJourney(journey.id)}
-                      aria-pressed={activeJourneyIds.includes(journey.id)}
-                    >
-                      {journey.name}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
+          {/* In book mode the rail mirrors exactly what the map draws for the book
+              — every one of its routes — and a click opens that route's panel. In
+              timeline mode routes are an optional overlay you toggle on for the age. */}
+          {mode === 'book'
+            ? journeys.length > 0 && (
+                <>
+                  <p className="label" style={{ margin: '18px 0 7px' }}>
+                    Routes in this book
+                  </p>
+                  <ul className="chips">
+                    {journeys.map((journey) => (
+                      <li className="chips__item" key={journey.id}>
+                        <button
+                          type="button"
+                          onClick={() => handleSelectJourney(journey.id)}
+                          aria-pressed={journey.id === selectedJourneyId}
+                        >
+                          {journey.name}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )
+            : availableJourneys.length > 0 && (
+                <>
+                  <p className="label" style={{ margin: '18px 0 7px' }}>
+                    Routes in this age
+                  </p>
+                  <ul className="chips">
+                    {availableJourneys.map((journey) => (
+                      <li className="chips__item" key={journey.id}>
+                        <button
+                          type="button"
+                          onClick={() => toggleJourney(journey.id)}
+                          aria-pressed={activeJourneyIds.includes(journey.id)}
+                        >
+                          {journey.name}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
 
           {nearbyEvents.length > 0 && mode === 'timeline' && (
             <>

@@ -88,7 +88,18 @@ export const useAtlas = create<AtlasState>((set, get) => ({
     const { start, end } = meta.narrativeRange;
     const midpoint = clampYear((start + (end ?? start)) / 2);
 
-    set({ mode: 'book', bookId, chapter, year: midpoint, selectedPlaceId: null, selectedPersonId: null, selectedJourneyId: null });
+    // Clear any route toggles carried over from timeline mode, so the book shows
+    // its own routes (journeysForBook) rather than a stale hand-picked set.
+    set({
+      mode: 'book',
+      bookId,
+      chapter,
+      year: midpoint,
+      selectedPlaceId: null,
+      selectedPersonId: null,
+      selectedJourneyId: null,
+      activeJourneyIds: [],
+    });
   },
 
   clearBook: () => set({ bookId: null, chapter: null }),
