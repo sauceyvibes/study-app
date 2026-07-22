@@ -13,7 +13,7 @@ interface BookNavigatorProps {
 }
 
 /** Canonical order, grouped for the picker. */
-const DIVISIONS = ['Torah', 'Historical', 'Wisdom', 'Prophets', 'Gospels', 'Letters'] as const;
+const DIVISIONS = ['Torah', 'Historical', 'Wisdom', 'Prophets', 'Gospels', 'Acts of the Apostles', 'Letters', 'Apocalyptic'] as const;
 
 /**
  * Book and chapter selection.
