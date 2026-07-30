@@ -1590,6 +1590,215 @@ a {
   margin-top: 7px;
 }
 
+/* Isolating a single leg: the stage heading gains a reset, each stage a toggle. */
+.stages__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.stages__hint {
+  margin: 3px 0 4px;
+  font-size: 11px;
+  font-style: italic;
+  color: var(--color-neutral-600);
+}
+
+.stages__reset,
+.stage__isolate {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  font-family: var(--font-heading);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-neutral-600);
+  background: none;
+  border: 1px solid var(--color-neutral-400);
+  border-radius: 999px;
+  transition: border-color 120ms ease, color 120ms ease, background 120ms ease;
+}
+
+.stages__reset:hover,
+.stage__isolate:hover {
+  color: var(--color-accent-700);
+  border-color: var(--color-accent-500);
+}
+
+.stage__isolate {
+  margin-left: auto;
+}
+
+.stage__isolate[aria-pressed='true'] {
+  color: var(--color-accent-700);
+  border-color: var(--color-accent-500);
+  background: color-mix(in srgb, var(--color-accent-300) 26%, transparent);
+}
+
+.stage--active {
+  background: color-mix(in srgb, var(--color-accent-300) 16%, transparent);
+  border-radius: 6px;
+}
+
+.stage--active::before {
+  color: var(--color-accent-700);
+}
+
+/* ── Modern photographs (place gallery) ──────────────────────────────────── */
+
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.gallery__item {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  padding: 0;
+  overflow: hidden;
+  background: var(--color-neutral-200);
+  border: 1px solid var(--color-neutral-400);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.gallery__item img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 200ms ease;
+}
+
+.gallery__item:hover img {
+  transform: scale(1.06);
+}
+
+.gallery__skeleton {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background: var(--color-neutral-200);
+  border-radius: var(--radius-sm);
+  animation: sg-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes sg-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.gallery__credit {
+  margin: 8px 0 0;
+  font-size: 11px;
+  font-style: italic;
+  color: var(--color-neutral-600);
+}
+
+/* The fullscreen photo viewer, portalled to <body> over the whole plate. */
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 24px;
+  background: color-mix(in srgb, var(--color-neutral-900) 90%, black);
+  animation: sg-fade 160ms ease;
+}
+
+.lightbox__figure {
+  grid-column: 2;
+  min-width: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.lightbox__img {
+  max-width: 100%;
+  max-height: 82vh;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg);
+}
+
+.lightbox__caption {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 60ch;
+  text-align: center;
+  font-size: 13px;
+  color: var(--color-neutral-200);
+}
+
+.lightbox__title {
+  color: var(--color-neutral-100);
+}
+
+.lightbox__meta {
+  font-size: 11.5px;
+  color: var(--color-neutral-400);
+}
+
+.lightbox__meta a {
+  color: var(--color-neutral-200);
+}
+
+.lightbox__close,
+.lightbox__nav {
+  display: grid;
+  place-items: center;
+  color: var(--color-neutral-100);
+  background: color-mix(in srgb, var(--color-neutral-900) 55%, transparent);
+  border-radius: 999px;
+}
+
+.lightbox__close:hover,
+.lightbox__nav:hover {
+  background: color-mix(in srgb, var(--color-neutral-900) 78%, transparent);
+}
+
+.lightbox__close {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  width: 40px;
+  height: 40px;
+  font-size: 18px;
+}
+
+.lightbox__nav {
+  width: 48px;
+  height: 48px;
+  font-size: 30px;
+  line-height: 1;
+}
+
+.lightbox__nav--prev {
+  grid-column: 1;
+}
+
+.lightbox__nav--next {
+  grid-column: 3;
+}
+
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 
 @media (max-width: 60rem) {

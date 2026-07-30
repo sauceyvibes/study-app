@@ -14,10 +14,13 @@ interface AtlasMapProps {
   highlightedIds: ReadonlySet<string>;
   selectedPlaceId: string | null;
   selectedJourneyId: string | null;
+  /** A leg index to isolate within the selected journey, or null for the whole route. */
+  selectedLegIndex: number | null;
   /** Place ids to frame. Changing this array re-fits the viewport. */
   focusPlaceIds: string[];
   onSelectPlace: (placeId: string | null) => void;
-  onSelectJourney: (journeyId: string) => void;
+  /** A route was clicked: the journey and which leg of it. */
+  onRouteClick: (journeyId: string, legIndex: number) => void;
 }
 
 /** Route layers, listed where a click or hover query needs both at once. */
@@ -39,8 +42,17 @@ const INK = {
   accent2: '#47756a', // sea teal — sea legs, decorative water labels
   accent2Deep: '#335c53',
   neutral: '#85765a', // inferred routes, conjectural sites
-  select: '#c79a3e', // gilt — the glow under a selected route
+  neon: '#39ff14', // the bright highlight a selected route lights up with
 } as const;
+
+// Route line widths, shared by the install and the selection effect so the two
+// never drift. A selected route is drawn heavier so it reads from across the map.
+const ROUTE_WIDTH: maplibregl.DataDrivenPropertyValueSpecification<number> = [
+  'interpolate', ['linear'], ['zoom'], 4, 1.6, 10, 2.8,
+];
+const ROUTE_WIDTH_SELECTED: maplibregl.DataDrivenPropertyValueSpecification<number> = [
+  'interpolate', ['linear'], ['zoom'], 4, 3, 10, 5,
+];
 
 /**
  * The map surface.
@@ -63,9 +75,10 @@ export function AtlasMap({
   highlightedIds,
   selectedPlaceId,
   selectedJourneyId,
+  selectedLegIndex,
   focusPlaceIds,
   onSelectPlace,
-  onSelectJourney,
+  onRouteClick,
 }: AtlasMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
@@ -198,13 +211,41 @@ export function AtlasMap({
     map.setFilter('place-selected', ['==', ['get', 'id'], selectedPlaceId ?? '__none__']);
   }, [selectedPlaceId, status]);
 
-  // ── Selected-route glow ────────────────────────────────────────────────────
+  // ── Route selection: isolate + light up ────────────────────────────────────
+  // Selecting a route hides every other one and repaints the chosen route neon,
+  // with a bright glow beneath so it is unmistakable from across the map. Isolating
+  // a single leg narrows that to one section. Deselecting restores every route in
+  // its own colour.
   useEffect(() => {
     journeyRef.current = selectedJourneyId;
     const map = mapRef.current;
     if (!map || status !== 'ready') return;
-    map.setFilter('route-selected', ['==', ['get', 'journeyId'], selectedJourneyId ?? '__none__']);
-  }, [selectedJourneyId, status]);
+
+    if (selectedJourneyId) {
+      const match: maplibregl.ExpressionSpecification[] = [['==', ['get', 'journeyId'], selectedJourneyId]];
+      if (selectedLegIndex !== null) match.push(['==', ['get', 'legIndex'], selectedLegIndex]);
+
+      map.setFilter('route-line-solid', ['all', ['!=', ['get', 'mode'], 'inferred'], ...match]);
+      map.setFilter('route-line-inferred', ['all', ['==', ['get', 'mode'], 'inferred'], ...match]);
+      map.setFilter('route-selected', ['all', ...match]);
+
+      for (const id of ROUTE_LAYERS) {
+        map.setPaintProperty(id, 'line-color', INK.neon);
+        map.setPaintProperty(id, 'line-width', ROUTE_WIDTH_SELECTED);
+        map.setPaintProperty(id, 'line-opacity', 1);
+      }
+    } else {
+      map.setFilter('route-line-solid', ['!=', ['get', 'mode'], 'inferred']);
+      map.setFilter('route-line-inferred', ['==', ['get', 'mode'], 'inferred']);
+      map.setFilter('route-selected', ['==', ['get', 'journeyId'], '__none__']);
+
+      map.setPaintProperty('route-line-solid', 'line-color', ['get', 'color']);
+      map.setPaintProperty('route-line-inferred', 'line-color', ['get', 'color']);
+      for (const id of ROUTE_LAYERS) map.setPaintProperty(id, 'line-width', ROUTE_WIDTH);
+      map.setPaintProperty('route-line-solid', 'line-opacity', 0.9);
+      map.setPaintProperty('route-line-inferred', 'line-opacity', 0.85);
+    }
+  }, [selectedJourneyId, selectedLegIndex, status]);
 
   // ── Framing ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -257,8 +298,9 @@ export function AtlasMap({
       ];
       const routeHits = map.queryRenderedFeatures(box, { layers: [...ROUTE_LAYERS] }) as MapGeoJSONFeature[];
       const journeyId = routeHits[0]?.properties?.['journeyId'];
-      if (typeof journeyId === 'string') {
-        onSelectJourney(journeyId);
+      const legIndex = routeHits[0]?.properties?.['legIndex'];
+      if (typeof journeyId === 'string' && typeof legIndex === 'number') {
+        onRouteClick(journeyId, legIndex);
         return;
       }
 
@@ -288,7 +330,7 @@ export function AtlasMap({
         map.off('mouseleave', layer, hidePointer);
       }
     };
-  }, [onSelectPlace, onSelectJourney, status]);
+  }, [onSelectPlace, onRouteClick, status]);
 
   return (
     <>
@@ -431,13 +473,9 @@ function installLayers(map: MapLibreMap): void {
   // drawn dashed to mark it as reconstructed. Two layers rather than one because
   // `line-dasharray` cannot be data-driven in MapLibre; a single layer that tried
   // would be rejected whole (surfaced only as an error event).
-  const routeWidth: maplibregl.DataDrivenPropertyValueSpecification<number> = [
-    'interpolate', ['linear'], ['zoom'], 4, 1.6, 10, 2.8,
-  ];
 
-  // A soft gilt glow beneath the selected journey's legs, so a clicked route
-  // stands out from the others without altering its own colour or dash. Drawn
-  // before the mode lines so it reads as a halo the coloured line sits on.
+  // A wide neon glow beneath the selected route (filtered in by the selection
+  // effect), so a chosen route lights up and is unmistakable from across the map.
   map.addLayer({
     id: 'route-selected',
     type: 'line',
@@ -445,10 +483,10 @@ function installLayers(map: MapLibreMap): void {
     filter: ['==', ['get', 'journeyId'], '__none__'],
     layout: { 'line-cap': 'round', 'line-join': 'round' },
     paint: {
-      'line-color': INK.select,
-      'line-width': ['interpolate', ['linear'], ['zoom'], 4, 5, 10, 10],
-      'line-opacity': 0.55,
-      'line-blur': 0.6,
+      'line-color': INK.neon,
+      'line-width': ['interpolate', ['linear'], ['zoom'], 4, 8, 10, 18],
+      'line-opacity': 0.45,
+      'line-blur': 2.5,
     },
   });
 
@@ -459,7 +497,7 @@ function installLayers(map: MapLibreMap): void {
     source: SOURCES.routes,
     filter: ['!=', ['get', 'mode'], 'inferred'],
     layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: { 'line-color': ['get', 'color'], 'line-width': routeWidth, 'line-opacity': 0.9 },
+    paint: { 'line-color': ['get', 'color'], 'line-width': ROUTE_WIDTH, 'line-opacity': 0.9 },
   });
 
   // Dashed for inferred connections the text implies without naming the road.
@@ -471,7 +509,7 @@ function installLayers(map: MapLibreMap): void {
     layout: { 'line-cap': 'round', 'line-join': 'round' },
     paint: {
       'line-color': ['get', 'color'],
-      'line-width': routeWidth,
+      'line-width': ROUTE_WIDTH,
       'line-opacity': 0.85,
       'line-dasharray': [2, 3],
     },

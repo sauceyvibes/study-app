@@ -8,9 +8,13 @@ import { RouteSwatch, ROUTE_LABEL } from './RouteGlyph';
 
 interface JourneyPanelProps {
   journeyId: string;
+  /** The isolated leg on the map, or null when the whole route is shown. */
+  isolatedLegIndex: number | null;
   onClose: () => void;
   onSelectPlace: (placeId: string) => void;
   onSelectPerson: (personId: string) => void;
+  /** Isolate a single leg on the map, or null to show the whole route again. */
+  onIsolateLeg: (legIndex: number | null) => void;
 }
 
 const ROUTE_CONFIDENCE_TEXT: Record<Confidence, string> = {
@@ -46,7 +50,14 @@ function placeName(id: string): string {
  * confidence says plainly how much of the path is reconstructed rather than read
  * off the text.
  */
-export function JourneyPanel({ journeyId, onClose, onSelectPlace, onSelectPerson }: JourneyPanelProps) {
+export function JourneyPanel({
+  journeyId,
+  isolatedLegIndex,
+  onClose,
+  onSelectPlace,
+  onSelectPerson,
+  onIsolateLeg,
+}: JourneyPanelProps) {
   const journey = JOURNEY_BY_ID.get(journeyId);
 
   if (!journey) {
@@ -141,10 +152,23 @@ export function JourneyPanel({ journeyId, onClose, onSelectPlace, onSelectPerson
       </div>
 
       <section className="panel__section">
-        <h3 className="panel__heading">Stages</h3>
+        <div className="stages__head">
+          <h3 className="panel__heading" style={{ margin: 0 }}>
+            Stages
+          </h3>
+          {isolatedLegIndex !== null && (
+            <button type="button" className="stages__reset" onClick={() => onIsolateLeg(null)}>
+              Show whole route
+            </button>
+          )}
+        </div>
+        <p className="stages__hint">Isolate a section to show only it on the map.</p>
         <ol className="stages">
           {journey.legs.map((leg, index) => (
-            <li className="stage" key={`${leg.fromPlace}-${leg.toPlace}-${index}`}>
+            <li
+              className={`stage${index === isolatedLegIndex ? ' stage--active' : ''}`}
+              key={`${leg.fromPlace}-${leg.toPlace}-${index}`}
+            >
               <div className="stage__route">
                 <button type="button" className="inline-link" onClick={() => onSelectPlace(leg.fromPlace)}>
                   {placeName(leg.fromPlace)}
@@ -154,6 +178,15 @@ export function JourneyPanel({ journeyId, onClose, onSelectPlace, onSelectPerson
                   {placeName(leg.toPlace)}
                 </button>
                 <span className="stage__mode">{ROUTE_LABEL[leg.mode]}</span>
+                <button
+                  type="button"
+                  className="stage__isolate"
+                  onClick={() => onIsolateLeg(index === isolatedLegIndex ? null : index)}
+                  aria-pressed={index === isolatedLegIndex}
+                  title={index === isolatedLegIndex ? 'Show the whole route' : 'Show only this section on the map'}
+                >
+                  {index === isolatedLegIndex ? 'Showing' : 'Only this'}
+                </button>
               </div>
               {leg.note && <p className="stage__note">{leg.note}</p>}
               {leg.scripture.length > 0 && (

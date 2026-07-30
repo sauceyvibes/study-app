@@ -3,7 +3,9 @@ import tseslint from 'typescript-eslint';
 import nextPlugin from '@next/eslint-plugin-next';
 
 export default tseslint.config(
-  { ignores: ['.next/**', 'node_modules/**', 'out/**', 'next-env.d.ts'] },
+  // `.claude/` holds tooling state, including git worktrees that are full copies
+  // of this project — linting those would double-report every finding.
+  { ignores: ['.next/**', 'node_modules/**', 'out/**', 'next-env.d.ts', '.claude/**'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

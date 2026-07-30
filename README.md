@@ -42,6 +42,14 @@ gives its span in years, its start and end, who travelled it, and how much of th
 path is reconstructed — then the itinerary stage by stage, each leg naming its two
 places, how that stretch was travelled, and its passages. It gathers the datable
 events that fall along the way and totals the distance and the sea/overland split.
+Selecting a route lights it up and drops the others so it reads from across the
+map; click a single leg to isolate that one section, and an empty click restores
+them all.
+
+**Modern photographs of every site.** A place's panel pulls in present-day
+photographs geotagged near its coordinates from Wikimedia Commons — genuine images
+of the location, each credited to its author and licence — in a thumbnail grid
+that opens to a fullscreen viewer.
 
 **Uncertainty as a first-class citizen.** Every identification carries a
 confidence rating, and a place cannot be marked *contested* without naming the
@@ -146,7 +154,7 @@ inscription or excavation report, the entry says which.
 npm test
 ```
 
-83 tests. The most valuable are the corpus integrity checks: the data files are
+86 tests. The most valuable are the corpus integrity checks: the data files are
 hand-written, so the realistic failure is not a logic bug but a typo in an id —
 a journey leg pointing at a site that does not exist, a chapter index referencing
 a chapter the book does not have. Those would fail silently at runtime as an

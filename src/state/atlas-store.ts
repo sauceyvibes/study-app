@@ -32,6 +32,8 @@ interface AtlasState {
   selectedPersonId: string | null;
   /** The journey whose panel is open, or null. Shares the drawer with a place. */
   selectedJourneyId: string | null;
+  /** A single leg of the selected journey to isolate, or null for the whole route. */
+  selectedLegIndex: number | null;
   /** Place ids the map should frame, e.g. after a person search. */
   focusPlaceIds: string[];
   /** Journey ids drawn as routes. */
@@ -48,6 +50,8 @@ interface AtlasState {
   selectPlace: (placeId: string | null) => void;
   selectPerson: (personId: string | null) => void;
   selectJourney: (journeyId: string | null) => void;
+  /** Isolate one leg of the selected journey on the map, or null to show it whole. */
+  selectJourneyLeg: (legIndex: number | null) => void;
   focusPlaces: (placeIds: string[]) => void;
   toggleJourney: (journeyId: string) => void;
   setJourneys: (journeyIds: string[]) => void;
@@ -69,6 +73,7 @@ export const useAtlas = create<AtlasState>((set, get) => ({
   selectedPlaceId: null,
   selectedPersonId: null,
   selectedJourneyId: null,
+  selectedLegIndex: null,
   focusPlaceIds: [],
   activeJourneyIds: [],
   showPolities: true,
@@ -77,7 +82,11 @@ export const useAtlas = create<AtlasState>((set, get) => ({
   setYear: (year) => set({ year: clampYear(year) }),
 
   setMode: (mode) =>
-    set(mode === 'timeline' ? { mode, bookId: null, chapter: null } : { mode }),
+    set(
+      mode === 'timeline'
+        ? { mode, bookId: null, chapter: null, selectedJourneyId: null, selectedLegIndex: null }
+        : { mode, selectedJourneyId: null, selectedLegIndex: null },
+    ),
 
   selectBook: (bookId, chapter = null) => {
     const meta = BOOK_BY_ID.get(bookId);
@@ -98,11 +107,12 @@ export const useAtlas = create<AtlasState>((set, get) => ({
       selectedPlaceId: null,
       selectedPersonId: null,
       selectedJourneyId: null,
+      selectedLegIndex: null,
       activeJourneyIds: [],
     });
   },
 
-  clearBook: () => set({ bookId: null, chapter: null }),
+  clearBook: () => set({ bookId: null, chapter: null, selectedJourneyId: null, selectedLegIndex: null }),
 
   setChapter: (chapter) => {
     const { bookId } = get();
@@ -115,13 +125,18 @@ export const useAtlas = create<AtlasState>((set, get) => ({
 
   // Selecting a place also dismisses any open person pop-up and journey panel, so
   // a click on the map never leaves a stale panel floating over an unrelated place.
-  selectPlace: (placeId) => set({ selectedPlaceId: placeId, selectedPersonId: null, selectedJourneyId: null }),
+  selectPlace: (placeId) =>
+    set({ selectedPlaceId: placeId, selectedPersonId: null, selectedJourneyId: null, selectedLegIndex: null }),
 
   selectPerson: (personId) => set({ selectedPersonId: personId }),
 
   // A place and a journey share the right-hand drawer, so opening one closes the
-  // other; a person pop-up is a modal overlay and is cleared too.
-  selectJourney: (journeyId) => set({ selectedJourneyId: journeyId, selectedPlaceId: null, selectedPersonId: null }),
+  // other; a person pop-up is a modal overlay and is cleared too. A fresh journey
+  // selection always starts showing the whole route (no leg isolated).
+  selectJourney: (journeyId) =>
+    set({ selectedJourneyId: journeyId, selectedLegIndex: null, selectedPlaceId: null, selectedPersonId: null }),
+
+  selectJourneyLeg: (legIndex) => set({ selectedLegIndex: legIndex }),
 
   focusPlaces: (placeIds) => set({ focusPlaceIds: placeIds }),
 

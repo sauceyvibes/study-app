@@ -4,6 +4,7 @@ import type { Confidence, Place, ScriptureRef } from '@/atlas/types';
 import { resolveEvents, resolvePeople, resolvePolities, PLACE_BY_ID } from '@/atlas/corpus';
 import { formatYear, formatYearRange } from '@/atlas/search';
 import { ScriptureLink } from './ScriptureLink';
+import { PlaceGallery } from './PlaceGallery';
 
 interface PlacePanelProps {
   placeId: string;
@@ -95,6 +96,10 @@ export function PlacePanel({ placeId, onClose, onSelectPlace, onSelectPerson }: 
       <hr className="panel__divider" />
 
       <p className="panel__prose">{place.description}</p>
+
+      {place.coordinates && (
+        <PlaceGallery placeId={place.id} coordinates={place.coordinates} placeName={place.name} />
+      )}
 
       {place.alternatives && place.alternatives.length > 0 && (
         <section className="panel__section">

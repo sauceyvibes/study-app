@@ -58,6 +58,7 @@ export function Atlas() {
   const selectedPlaceId = useAtlas((s) => s.selectedPlaceId);
   const selectedPersonId = useAtlas((s) => s.selectedPersonId);
   const selectedJourneyId = useAtlas((s) => s.selectedJourneyId);
+  const selectedLegIndex = useAtlas((s) => s.selectedLegIndex);
   const focusPlaceIds = useAtlas((s) => s.focusPlaceIds);
   const activeJourneyIds = useAtlas((s) => s.activeJourneyIds);
   const showPolities = useAtlas((s) => s.showPolities);
@@ -71,6 +72,7 @@ export function Atlas() {
   const selectPlace = useAtlas((s) => s.selectPlace);
   const selectPerson = useAtlas((s) => s.selectPerson);
   const selectJourney = useAtlas((s) => s.selectJourney);
+  const selectJourneyLeg = useAtlas((s) => s.selectJourneyLeg);
   const focusPlaces = useAtlas((s) => s.focusPlaces);
   const toggleJourney = useAtlas((s) => s.toggleJourney);
   const togglePolities = useAtlas((s) => s.togglePolities);
@@ -176,15 +178,46 @@ export function Atlas() {
     [selectPlace, selectPerson, selectJourney, focusPlaces, selectBook, setMode],
   );
 
-  // Clicking a route on the map (or a route search result) opens its panel and
-  // frames the map on the full journey, the way selecting a book frames a book.
-  const handleSelectJourney = useCallback(
+  // Selecting a route from a list (rail chip, map key, search): isolate it on the
+  // map, frame the whole itinerary, and open its panel.
+  const selectJourneyFramed = useCallback(
     (journeyId: string) => {
       selectJourney(journeyId);
       const journey = JOURNEY_BY_ID.get(journeyId);
       if (journey) focusPlaces(placeIdsForJourney(journey));
     },
     [selectJourney, focusPlaces],
+  );
+
+  // Toggle from a list control: a second click on the already-selected route
+  // deselects it (bringing the others back).
+  const handleToggleJourney = useCallback(
+    (journeyId: string) => {
+      if (journeyId === selectedJourneyId) selectJourney(null);
+      else selectJourneyFramed(journeyId);
+    },
+    [selectedJourneyId, selectJourney, selectJourneyFramed],
+  );
+
+  // A click on the route lines drills down: first click selects the whole route
+  // (hiding the rest); clicking again on a section isolates that one leg; clicking
+  // the isolated leg restores the whole route. Empty-map clicks (handled in the
+  // map) deselect entirely.
+  const handleRouteClick = useCallback(
+    (journeyId: string, legIndex: number) => {
+      const journey = JOURNEY_BY_ID.get(journeyId);
+      if (journeyId !== selectedJourneyId) {
+        selectJourneyFramed(journeyId);
+      } else if (selectedLegIndex === null) {
+        selectJourneyLeg(legIndex);
+        const leg = journey?.legs[legIndex];
+        if (leg) focusPlaces([leg.fromPlace, leg.toPlace]);
+      } else {
+        selectJourneyLeg(null);
+        if (journey) focusPlaces(placeIdsForJourney(journey));
+      }
+    },
+    [selectedJourneyId, selectedLegIndex, selectJourneyFramed, selectJourneyLeg, focusPlaces],
   );
 
   return (
@@ -247,7 +280,7 @@ export function Atlas() {
                       <li className="chips__item" key={journey.id}>
                         <button
                           type="button"
-                          onClick={() => handleSelectJourney(journey.id)}
+                          onClick={() => handleToggleJourney(journey.id)}
                           aria-pressed={journey.id === selectedJourneyId}
                         >
                           {journey.name}
@@ -317,9 +350,10 @@ export function Atlas() {
               highlightedIds={highlightedIds}
               selectedPlaceId={selectedPlaceId}
               selectedJourneyId={selectedJourneyId}
+              selectedLegIndex={selectedLegIndex}
               focusPlaceIds={focusPlaceIds}
               onSelectPlace={selectPlace}
-              onSelectJourney={handleSelectJourney}
+              onRouteClick={handleRouteClick}
             />
             <div className="plate__vignette" aria-hidden="true" />
             <PlateGrain />
@@ -366,9 +400,9 @@ export function Atlas() {
                           <button
                             type="button"
                             className="map-legend__route-row"
-                            onClick={() => handleSelectJourney(journey.id)}
+                            onClick={() => handleToggleJourney(journey.id)}
                             aria-pressed={journey.id === selectedJourneyId}
-                            title={`Open ${journey.name}`}
+                            title={journey.id === selectedJourneyId ? `Deselect ${journey.name}` : `Isolate ${journey.name}`}
                           >
                             <RouteSwatch mode="land" color={journey.color} />
                             {journey.name}
@@ -416,12 +450,23 @@ export function Atlas() {
         {selectedJourneyId && !selectedPlaceId && (
           <JourneyPanel
             journeyId={selectedJourneyId}
+            isolatedLegIndex={selectedLegIndex}
             onClose={() => selectJourney(null)}
             onSelectPlace={(id) => {
               selectPlace(id);
               focusPlaces([id]);
             }}
             onSelectPerson={selectPerson}
+            onIsolateLeg={(index) => {
+              selectJourneyLeg(index);
+              const journey = JOURNEY_BY_ID.get(selectedJourneyId);
+              if (index !== null) {
+                const leg = journey?.legs[index];
+                if (leg) focusPlaces([leg.fromPlace, leg.toPlace]);
+              } else if (journey) {
+                focusPlaces(placeIdsForJourney(journey));
+              }
+            }}
           />
         )}
 
