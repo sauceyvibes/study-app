@@ -60,6 +60,52 @@ describe('fetchPlaceImages', () => {
     expect(image!.license).toBe('CC BY-SA 4.0');
   });
 
+  it('ranks ruins and archaeology ahead of modern photos', async () => {
+    stubCommons({
+      '1': {
+        title: 'File:Modern harbour of Jaffa.jpg',
+        index: 0, // nearest, but modern
+        imageinfo: [{ mime: 'image/jpeg', thumburl: 'https://example.org/400px-Harbour.jpg' }],
+        categories: [{ title: 'Category:Marinas in Israel' }],
+      },
+      '2': {
+        title: 'File:Excavations at ancient Jaffa.jpg',
+        index: 1,
+        imageinfo: [{ mime: 'image/jpeg', thumburl: 'https://example.org/400px-Dig.jpg' }],
+        categories: [{ title: 'Category:Jaffa' }],
+      },
+      '3': {
+        title: 'File:Jaffa hill view.jpg',
+        index: 2,
+        imageinfo: [{ mime: 'image/jpeg', thumburl: 'https://example.org/400px-Hill.jpg' }],
+        categories: [{ title: 'Category:Archaeological sites in Israel' }], // ruins by category
+      },
+    });
+
+    const images = await fetchPlaceImages('test-ruins-pref', COORDS);
+    // The excavation (by title) and the hill (by category) lead despite the modern
+    // harbour being nearer; the harbour still appears, but last.
+    expect(images.map((image) => image.title)).toEqual([
+      'Excavations at ancient Jaffa',
+      'Jaffa hill view',
+      'Modern harbour of Jaffa',
+    ]);
+  });
+
+  it('falls back to the nearest photos when nothing archaeological is tagged', async () => {
+    stubCommons({
+      '1': {
+        title: 'File:A street scene.jpg',
+        index: 0,
+        imageinfo: [{ mime: 'image/jpeg', thumburl: 'https://example.org/400px-Street.jpg' }],
+        categories: [{ title: 'Category:Streets' }],
+      },
+    });
+    const images = await fetchPlaceImages('test-ruins-fallback', COORDS);
+    expect(images).toHaveLength(1);
+    expect(images[0]!.title).toBe('A street scene');
+  });
+
   it('returns an empty list without throwing when the request fails', async () => {
     vi.stubGlobal(
       'fetch',

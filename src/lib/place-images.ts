@@ -40,6 +40,7 @@ interface CommonsPage {
   title?: string;
   index?: number;
   imageinfo?: CommonsImageInfo[];
+  categories?: { title?: string }[];
 }
 
 interface CommonsResponse {
@@ -73,7 +74,22 @@ function looksLikePhoto(title: string, mime: string | undefined): boolean {
   return !/\b(map|plan|coat[_ ]of[_ ]arms|flag|logo|diagram|chart|svg|icon|seal|banner|locator)\b/i.test(title);
 }
 
-function toImage(page: CommonsPage): PlaceImage | null {
+/**
+ * Whether a file reads as the ancient site's ruins/archaeology rather than the
+ * modern town around it. Checked against the file title and its Commons
+ * categories, which is where "Tel Megiddo", "Archaeological sites in Israel" and
+ * the like live.
+ */
+// Deliberately excludes bare "tel"/"tell": it would flag "Tel Aviv" as ruins,
+// which is exactly wrong for sites inside the modern city (Joppa among them).
+const RUINS_RE =
+  /\b(ruins?|archaeolog\w*|excavat\w*|antiquit\w*|ancient|acropolis|necropolis|amphitheat\w*|theatre|aqueduct|thermae|hippodrome|cardo|mosaics?|sarcophag\w*|temple|citadel|fortress|rampart|nabat\w*|crusader|byzantine|hellenistic|roman|iron age|bronze age|tombs?|mound|catacombs?|synagogue|basilica|national park)\b/i;
+
+function ruinsSignal(title: string, categories: string[]): boolean {
+  return RUINS_RE.test(title) || categories.some((category) => RUINS_RE.test(category));
+}
+
+function toImage(page: CommonsPage): (PlaceImage & { ruins: boolean }) | null {
   const info = page.imageinfo?.[0];
   const thumbUrl = info?.thumburl;
   if (!info || !thumbUrl) return null;
@@ -82,6 +98,7 @@ function toImage(page: CommonsPage): PlaceImage | null {
   if (!looksLikePhoto(title, info.mime)) return null;
 
   const meta = info.extmetadata ?? {};
+  const categories = (page.categories ?? []).map((category) => category.title ?? '');
   return {
     id: title,
     title: title.replace(/\.(jpe?g|png)$/i, ''),
@@ -90,6 +107,7 @@ function toImage(page: CommonsPage): PlaceImage | null {
     descriptionUrl: info.descriptionurl ?? '',
     artist: meta.Artist?.value ? stripHtml(meta.Artist.value) : null,
     license: meta.LicenseShortName?.value ? stripHtml(meta.LicenseShortName.value) : null,
+    ruins: ruinsSignal(title, categories),
   };
 }
 
@@ -108,11 +126,13 @@ export async function fetchPlaceImages(placeId: string, coordinates: Coordinates
     generator: 'geosearch',
     ggscoord: `${lat}|${lon}`,
     ggsradius: '10000',
-    ggslimit: '40',
+    ggslimit: '50',
     ggsnamespace: '6',
-    prop: 'imageinfo',
+    prop: 'imageinfo|categories',
     iiprop: 'url|extmetadata|mime',
     iiurlwidth: '400',
+    cllimit: '30',
+    clshow: '!hidden',
   });
   const url = `https://commons.wikimedia.org/w/api.php?${params.toString()}`;
 
@@ -125,15 +145,23 @@ export async function fetchPlaceImages(placeId: string, coordinates: Coordinates
       if (!pages) return [];
 
       const seen = new Set<string>();
-      const images = Object.values(pages)
+      const candidates = Object.values(pages)
         .sort((a, b) => (a.index ?? 0) - (b.index ?? 0)) // geosearch order = nearest first
         .map(toImage)
-        .filter((image): image is PlaceImage => {
+        .filter((image): image is PlaceImage & { ruins: boolean } => {
           if (!image || seen.has(image.id)) return false;
           seen.add(image.id);
           return true;
-        })
-        .slice(0, MAX_IMAGES);
+        });
+
+      // Lead with the site's ruins and archaeology, then fill with the nearest
+      // remaining photographs. Most sites are sited on the excavated tell, so the
+      // nearby photos are ruins anyway and this simply orders the clearly-tagged
+      // ones first; for a living city it surfaces whatever ruins exist ahead of
+      // the modern street scenes rather than dropping the gallery to nothing.
+      const ruins = candidates.filter((image) => image.ruins);
+      const others = candidates.filter((image) => !image.ruins);
+      const images = [...ruins, ...others].slice(0, MAX_IMAGES);
 
       cache.set(placeId, images);
       return images;

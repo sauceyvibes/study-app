@@ -46,10 +46,12 @@ Selecting a route lights it up and drops the others so it reads from across the
 map; click a single leg to isolate that one section, and an empty click restores
 them all.
 
-**Modern photographs of every site.** A place's panel pulls in present-day
-photographs geotagged near its coordinates from Wikimedia Commons — genuine images
-of the location, each credited to its author and licence — in a thumbnail grid
-that opens to a fullscreen viewer.
+**The site today.** A place's panel pulls in present-day photographs geotagged
+near its coordinates from Wikimedia Commons — genuine images of the location, each
+credited to its author and licence — in a thumbnail grid that opens to a
+fullscreen viewer. Because most sites sit on the excavated tell, these are largely
+the ruins; where a file is tagged as ruins or archaeology it is ranked first, so a
+living city leads with whatever ancient remains it has.
 
 **Uncertainty as a first-class citizen.** Every identification carries a
 confidence rating, and a place cannot be marked *contested* without naming the

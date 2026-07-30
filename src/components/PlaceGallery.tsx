@@ -41,7 +41,7 @@ export function PlaceGallery({ placeId, coordinates, placeName }: PlaceGalleryPr
   if (images === null) {
     return (
       <section className="panel__section">
-        <h3 className="panel__heading">Modern photographs</h3>
+        <h3 className="panel__heading">The site today</h3>
         <ul className="gallery" aria-hidden="true">
           {Array.from({ length: 4 }).map((_, i) => (
             <li key={i}>
@@ -57,7 +57,7 @@ export function PlaceGallery({ placeId, coordinates, placeName }: PlaceGalleryPr
 
   return (
     <section className="panel__section">
-      <h3 className="panel__heading">Modern photographs</h3>
+      <h3 className="panel__heading">The site today</h3>
       <ul className="gallery">
         {images.map((image, index) => (
           <li key={image.id}>
@@ -74,7 +74,8 @@ export function PlaceGallery({ placeId, coordinates, placeName }: PlaceGalleryPr
         ))}
       </ul>
       <p className="gallery__credit">
-        Geotagged photographs near this site, from Wikimedia Commons. Click to enlarge.
+        Photographs at this site — its ruins and remains where they exist — from Wikimedia Commons.
+        Click to enlarge.
       </p>
 
       {lightbox !== null && (
