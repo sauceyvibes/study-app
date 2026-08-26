@@ -1,15 +1,26 @@
-import type { AtlasCorpus, BookMeta, Coordinates, HistoricalEvent, Journey, Person, Place, Polity, Year } from './types';
-import { PLACES as CURATED_PLACES, ATLAS_COVERAGE } from './data/places';
+import type {
+  AtlasCorpus,
+  BookMeta,
+  Coordinates,
+  HistoricalEvent,
+  Journey,
+  Person,
+  Place,
+  Polity,
+  Territory,
+  Year,
+} from './types';
+import { ATLAS_COVERAGE } from './data/places';
 import { PERIODS } from './data/periods';
-import { PEOPLE } from './data/people';
-import { MINOR_PEOPLE } from './data/people-minor';
 import { EVENTS } from './data/events';
 import { JOURNEYS } from './data/journeys';
 import { POLITIES } from './data/polities';
+import { TERRITORIES } from './data/territories';
 import { BOOKS as BASE_BOOKS } from './data/books';
-import { GAZETTEER_PLACES, CHAPTER_INDEX, GAZETTEER_ATTRIBUTION } from './data/gazetteer';
+import { ASSEMBLED_PLACES, CHAPTER_INDEX, GAZETTEER_ATTRIBUTION } from './data/gazetteer';
+import { ALL_PEOPLE, TOPICS, NOMENCLATURE_ATTRIBUTION } from './data/nomenclature';
 
-export { ATLAS_COVERAGE, GAZETTEER_ATTRIBUTION };
+export { ATLAS_COVERAGE, GAZETTEER_ATTRIBUTION, NOMENCLATURE_ATTRIBUTION };
 
 /**
  * The assembled corpus and the lookup indexes built over it.
@@ -19,16 +30,16 @@ export { ATLAS_COVERAGE, GAZETTEER_ATTRIBUTION };
  * CDN caches it at the edge. A document store would add latency and cost to
  * solve a problem this app does not have — see docs/architecture.md.
  *
- * Two layers make up the places: the hand-curated core (rich entries, in
- * `data/places/`) and the comprehensive OpenBible-derived gazetteer (in
- * `data/gazetteer.ts`). Curated first, so a curated entry wins any id lookup.
+ * Three layers make up the places, assembled in `data/gazetteer.ts`: the
+ * hand-curated core and its named sites (`data/places/`), the comprehensive
+ * OpenBible gazetteer, and STEPBible's TIPNR, which supplies the ancient-language
+ * names the first two lack and the locations *inside* settlements that neither
+ * catalogues. People are assembled the same way in `data/nomenclature.ts`.
+ * Curated first throughout, so a curated entry wins any id lookup.
  */
 
 /** Curated first, so their richer entries win the id lookup. */
-export const PLACES: Place[] = [...CURATED_PLACES, ...GAZETTEER_PLACES];
-
-/** Full biographies first, so they win the id lookup if a slug is ever repeated. */
-const ALL_PEOPLE: Person[] = [...PEOPLE, ...MINOR_PEOPLE.filter((m) => !PEOPLE.some((p) => p.id === m.id))];
+export const PLACES: Place[] = ASSEMBLED_PLACES;
 
 /**
  * Books with the comprehensive chapter index merged in. Every book is now marked
@@ -48,6 +59,8 @@ export const CORPUS: AtlasCorpus = {
   events: EVENTS,
   journeys: JOURNEYS,
   polities: POLITIES,
+  territories: TERRITORIES,
+  topics: TOPICS,
   books: BOOKS,
 };
 
@@ -60,10 +73,48 @@ export const PERSON_BY_ID = indexById(ALL_PEOPLE);
 export const EVENT_BY_ID = indexById(EVENTS);
 export const JOURNEY_BY_ID = indexById(JOURNEYS);
 export const POLITY_BY_ID = indexById(POLITIES);
+export const TERRITORY_BY_ID = indexById(TERRITORIES);
+export const TOPIC_BY_ID = indexById(TOPICS);
 export const BOOK_BY_ID: ReadonlyMap<string, BookMeta> = indexById(BOOKS);
 
 /** Places with no coordinates cannot be drawn; keep them searchable but off-map. */
 export const MAPPABLE_PLACES: Place[] = PLACES.filter((p) => p.coordinates !== null);
+
+/**
+ * Place id → the named locations inside or beside it.
+ *
+ * Inverted from `Place.parentPlaceId` rather than kept as a second list on the
+ * parent, for the same reason `PLACES_BY_PERSON` is: one direction is authored
+ * and the other is derived, so the two cannot drift apart.
+ */
+const SITES_BY_PARENT: ReadonlyMap<string, string[]> = (() => {
+  const index = new Map<string, string[]>();
+  for (const place of PLACES) {
+    if (!place.parentPlaceId) continue;
+    const existing = index.get(place.parentPlaceId);
+    if (existing) existing.push(place.id);
+    else index.set(place.parentPlaceId, [place.id]);
+  }
+  return index;
+})();
+
+/**
+ * The named locations within a place, best-attested first.
+ *
+ * Jerusalem has more than thirty — gates, pools, towers, the porticoes of the
+ * temple — so the ordering matters: a reader opening Jerusalem should meet the
+ * temple and Solomon's Portico before the Dung Gate.
+ */
+export function sitesWithin(placeId: string): Place[] {
+  return resolvePlaces(SITES_BY_PARENT.get(placeId) ?? []).sort(
+    (a, b) => b.scripture.length - a.scripture.length || a.name.localeCompare(b.name),
+  );
+}
+
+/** The settlement a site belongs to, or null for a place that stands on its own. */
+export function parentOf(place: Place): Place | null {
+  return place.parentPlaceId ? PLACE_BY_ID.get(place.parentPlaceId) ?? null : null;
+}
 
 /**
  * Person id → place ids, built by reading the gazetteer rather than the people
@@ -139,6 +190,57 @@ export function placesAtYear(year: Year): Place[] {
 /** Polities with a drawable extent active in the given year. */
 export function politiesAtYear(year: Year): Polity[] {
   return POLITIES.filter((p) => p.extent !== null && rangeContains(p.range, year));
+}
+
+export function resolveTerritories(ids: readonly string[]): Territory[] {
+  return ids.map((id) => TERRITORY_BY_ID.get(id)).filter((t): t is Territory => t !== undefined);
+}
+
+/** Territories whose name denoted that ground in the given year. */
+export function territoriesAtYear(year: Year): Territory[] {
+  return TERRITORIES.filter((t) => rangeContains(t.range, year));
+}
+
+/**
+ * Places named in the same chapters as a person.
+ *
+ * Most of the three thousand figures in the corpus have no place attested to
+ * them: the sources say who a man's father was, not where he lived. Chapter
+ * co-occurrence is a real signal in place of that, but a weak one, and it is
+ * labelled as such in the interface — these are places *named alongside* someone,
+ * not places they are recorded at.
+ *
+ * Raw co-occurrence alone would return Jerusalem for everybody, since Jerusalem
+ * is named in hundreds of chapters. Scoring by how much of a place's *own*
+ * footprint the overlap accounts for corrects that: three chapters shared with a
+ * place named in four is a strong association, and three shared with a place
+ * named in four hundred is a coincidence.
+ */
+export function placesNamedWithPerson(personId: string, limit = 12): Place[] {
+  const person = PERSON_BY_ID.get(personId);
+  if (!person) return [];
+
+  const shared = new Map<string, number>();
+  // A much-named figure can carry hundreds of references; the leading ones are
+  // enough to characterise them and keep this cheap enough to call on open.
+  for (const ref of person.scripture.slice(0, 200)) {
+    for (const id of CHAPTER_INDEX[ref.book]?.[ref.chapter] ?? []) {
+      shared.set(id, (shared.get(id) ?? 0) + 1);
+    }
+  }
+
+  const scored: { place: Place; score: number }[] = [];
+  for (const [id, count] of shared) {
+    const place = PLACE_BY_ID.get(id);
+    if (!place || !place.coordinates) continue;
+    const footprint = Math.max(1, place.scripture.length);
+    scored.push({ place, score: count * (count / footprint) });
+  }
+
+  return scored
+    .sort((a, b) => b.score - a.score || a.place.name.localeCompare(b.place.name))
+    .slice(0, limit)
+    .map((entry) => entry.place);
 }
 
 /** Events falling within `tolerance` years of the given year. */

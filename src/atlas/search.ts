@@ -1,4 +1,4 @@
-import type { AncientNames, ScriptureRef } from './types';
+import type { AncientNames, Person, Place, ScriptureRef, Territory, Topic } from './types';
 import { BOOKS, CORPUS, PLACE_BY_ID, placesForPerson } from './corpus';
 
 /**
@@ -20,7 +20,15 @@ import { BOOKS, CORPUS, PLACE_BY_ID, placesForPerson } from './corpus';
  *    "siege ramp" finds something useful.
  */
 
-export type ResultKind = 'place' | 'person' | 'event' | 'journey' | 'scripture' | 'period';
+export type ResultKind =
+  | 'place'
+  | 'person'
+  | 'event'
+  | 'journey'
+  | 'scripture'
+  | 'period'
+  | 'topic'
+  | 'territory';
 
 export interface SearchResult {
   kind: ResultKind;
@@ -49,9 +57,23 @@ export function normalize(text: string): string {
     .trim();
 }
 
-/** Hebrew and Greek script are indexed as-is; only case and spacing are folded. */
+/**
+ * Fold Hebrew and Greek to their bare letters.
+ *
+ * Vowel points and accents are combining marks, and dropping them is what makes
+ * the search usable: a reader typing consonantal טורוס or unaccented Τυραννος
+ * should find the pointed and accented forms the corpus stores, and a reader
+ * copying a word out of a lexicon should not be defeated by whether their source
+ * used precomposed or decomposed Unicode. Decomposing first makes both spellings
+ * of the same word identical.
+ */
 function normalizeScript(text: string): string {
-  return text.toLowerCase().replace(/\s+/g, ' ').trim();
+  return text
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function ancientNameTerms(names: AncientNames): { term: string; label: string }[] {
@@ -76,10 +98,36 @@ interface IndexEntry {
   terms: { term: string; label: string }[];
   /** Prose searched only as a last resort. */
   prose: string;
+  /**
+   * How much of the biblical text this entry occupies, used only to order equal
+   * textual matches. With three thousand people in the corpus there are eleven
+   * Josephs and seven Zechariahs, and a reader typing "Joseph" means the one the
+   * text is mostly about.
+   */
+  weight: number;
 }
 
-/** Built once at module load. The corpus is small enough that this is instant. */
-const INDEX: IndexEntry[] = buildIndex();
+/**
+ * Built on the first search rather than at module load.
+ *
+ * The index now spans some forty-seven hundred entries across places, people,
+ * topics and territories, and normalising every name and alias in it is real
+ * work — perhaps twenty milliseconds. Doing it at import would spend that on the
+ * critical path of the first paint, for a feature the reader has not asked for
+ * yet. Deferring it puts the cost on the first keystroke instead, where it is
+ * already hidden behind `useDeferredValue` in the search panel.
+ */
+let INDEX: IndexEntry[] | null = null;
+
+function index(): IndexEntry[] {
+  if (INDEX === null) INDEX = buildIndex();
+  return INDEX;
+}
+
+/** Strong's numbers are searchable directly: "H0175" finds Aaron. */
+function strongsTerms(strongs: readonly string[] | undefined): { term: string; label: string }[] {
+  return (strongs ?? []).map((code) => ({ term: normalize(code), label: `Strong's ${code}` }));
+}
 
 function buildIndex(): IndexEntry[] {
   const entries: IndexEntry[] = [];
@@ -89,6 +137,7 @@ function buildIndex(): IndexEntry[] {
       { term: normalize(place.name), label: place.name },
       ...place.aliases.map((a) => ({ term: normalize(a), label: `also called ${a}` })),
       ...ancientNameTerms(place.ancientNames),
+      ...strongsTerms(place.strongs),
     ];
     if (place.modernName) terms.push({ term: normalize(place.modernName), label: `modern: ${place.modernName}` });
     for (const alt of place.alternatives ?? []) {
@@ -98,10 +147,11 @@ function buildIndex(): IndexEntry[] {
       kind: 'place',
       id: place.id,
       title: place.name,
-      subtitle: place.modernName ? `${describeKind(place.kind)} — today ${place.modernName}` : describeKind(place.kind),
+      subtitle: describePlace(place),
       placeIds: [place.id],
       terms,
       prose: normalize(`${place.description} ${place.archaeology ?? ''}`),
+      weight: place.scripture.length,
     });
   }
 
@@ -110,14 +160,54 @@ function buildIndex(): IndexEntry[] {
       kind: 'person',
       id: person.id,
       title: person.name,
-      subtitle: person.role,
+      subtitle: describePerson(person),
       placeIds: placesForPerson(person.id).map((p) => p.id),
       terms: [
         { term: normalize(person.name), label: person.name },
         ...person.aliases.map((a) => ({ term: normalize(a), label: `also called ${a}` })),
         ...ancientNameTerms(person.ancientNames),
+        ...strongsTerms(person.strongs),
       ],
       prose: normalize(person.description),
+      weight: person.scripture.length,
+    });
+  }
+
+  // Peoples, sects, gods, festivals, months, musical terms, constellations. These
+  // carry no coordinates on purpose — see the note on `Topic` in types.ts — so
+  // their `placeIds` stay empty and selecting one never moves the map.
+  for (const topic of CORPUS.topics) {
+    entries.push({
+      kind: 'topic',
+      id: topic.id,
+      title: topic.name,
+      subtitle: TOPIC_LABEL[topic.category],
+      placeIds: [],
+      terms: [
+        { term: normalize(topic.name), label: topic.name },
+        ...topic.aliases.map((a) => ({ term: normalize(a), label: `also called ${a}` })),
+        ...ancientNameTerms(topic.ancientNames),
+        ...strongsTerms(topic.strongs),
+      ],
+      prose: normalize(`${topic.description} ${topic.role}`),
+      weight: topic.scripture.length,
+    });
+  }
+
+  for (const territory of CORPUS.territories) {
+    entries.push({
+      kind: 'territory',
+      id: territory.id,
+      title: territory.name,
+      subtitle: TERRITORY_LABEL[territory.category],
+      placeIds: territory.placeId ? [territory.placeId] : [],
+      terms: [
+        { term: normalize(territory.name), label: territory.name },
+        ...territory.aliases.map((a) => ({ term: normalize(a), label: `also called ${a}` })),
+        ...ancientNameTerms(territory.ancientNames),
+      ],
+      prose: normalize(territory.summary),
+      weight: territory.scripture.length,
     });
   }
 
@@ -130,6 +220,7 @@ function buildIndex(): IndexEntry[] {
       placeIds: event.places,
       terms: [{ term: normalize(event.name), label: event.name }],
       prose: normalize(event.description),
+      weight: event.scripture.length,
     });
   }
 
@@ -142,6 +233,7 @@ function buildIndex(): IndexEntry[] {
       placeIds: journey.legs.flatMap((l) => [l.fromPlace, l.toPlace]),
       terms: [{ term: normalize(journey.name), label: journey.name }],
       prose: normalize(journey.summary),
+      weight: journey.legs.length,
     });
   }
 
@@ -154,10 +246,62 @@ function buildIndex(): IndexEntry[] {
       placeIds: [],
       terms: [{ term: normalize(period.name), label: period.name }],
       prose: normalize(period.summary),
+      weight: 0,
     });
   }
 
   return entries;
+}
+
+const TOPIC_LABEL: Record<Topic['category'], string> = {
+  deity: 'God, angel or spirit named in the text',
+  festival: 'Festival or sacred season',
+  month: 'Month of the calendar',
+  'people-group': 'People or religious group',
+  title: 'Title or office',
+  music: 'Musical or liturgical term',
+  star: 'Star or constellation',
+  other: 'Named in the text',
+};
+
+const TERRITORY_LABEL: Record<Territory['category'], string> = {
+  province: 'Roman province',
+  region: 'Region',
+  'tribal-allotment': 'Tribal allotment',
+  district: 'District',
+};
+
+/**
+ * The line under a place in the results.
+ *
+ * A location inside a settlement says so — "in Jerusalem" tells a reader looking
+ * for the Fish Gate that they have found the right thing far better than "Town"
+ * does, and there are fifty-nine of them under Jerusalem alone.
+ */
+function describePlace(place: Place): string {
+  const parent = place.parentPlaceId ? PLACE_BY_ID.get(place.parentPlaceId) : undefined;
+  if (parent) {
+    return `${describeKind(place.kind)} — ${place.siteRelation === 'near' ? 'near' : 'in'} ${parent.name}`;
+  }
+  return place.modernName ? `${describeKind(place.kind)} — today ${place.modernName}` : describeKind(place.kind);
+}
+
+/**
+ * The line under a person in the results.
+ *
+ * "Man" on its own is no help when the corpus holds two and a half thousand of
+ * them. What distinguishes one Zechariah from the next is when he lived and what
+ * house he belonged to, so both go on the line — that is exactly the information
+ * a reader needs to pick the right one out of a list of seven identical names.
+ *
+ * A people reckoned from an ancestor is not a person and must not read as one.
+ */
+function describePerson(person: Person): string {
+  if (person.kind === 'group') return person.role || 'People group';
+  const parts = [person.role || 'Person'];
+  if (person.tribe) parts.push(person.tribe);
+  parts.push(formatYearRange(person.floruit.start, person.floruit.end));
+  return parts.join(' · ');
 }
 
 function describeKind(kind: string): string {
@@ -316,7 +460,15 @@ export function search(query: string): SearchResult[] {
   const q = normalize(raw);
   const qScript = normalizeScript(raw);
 
-  for (const entry of INDEX) {
+  // Prose matches are collected apart from name matches, because they are a
+  // fallback and behave like one only if they are kept out of the way. Every
+  // minor figure's description now names their father and their children, so
+  // "Abdi" appears in the prose of a dozen unrelated entries; before this split
+  // those filled fourteen of the twenty-four result slots and pushed the other
+  // two men actually called Abdi off the page.
+  const prose: SearchResult[] = [];
+
+  for (const entry of index()) {
     let best: { score: number; label: string } | null = null;
 
     for (const { term, label } of entry.terms) {
@@ -328,24 +480,47 @@ export function search(query: string): SearchResult[] {
       if (score > 0 && (best === null || score > best.score)) best = { score, label };
     }
 
-    if (best === null && q.length >= 4 && entry.prose.includes(q)) {
-      best = { score: 40, label: 'mentioned in the notes' };
-    }
+    const isProse = best === null && q.length >= 4 && entry.prose.includes(q);
+    if (isProse) best = { score: 40, label: 'mentioned in the notes' };
+    if (!best) continue;
 
-    if (best) {
-      results.push({
-        kind: entry.kind,
-        id: entry.id,
-        title: entry.title,
-        subtitle: entry.subtitle,
-        matchedOn: best.label,
-        // Places outrank people and events on an equal textual match: on a map,
-        // the place is almost always what was meant.
-        score: best.score + (entry.kind === 'place' ? 20 : 0),
-        placeIds: entry.placeIds.filter((id) => PLACE_BY_ID.has(id)),
-      });
-    }
+    const result: SearchResult = {
+      kind: entry.kind,
+      id: entry.id,
+      title: entry.title,
+      subtitle: entry.subtitle,
+      matchedOn: best.label,
+      // Places outrank people and events on an equal textual match: on a map,
+      // the place is almost always what was meant. Prominence then separates
+      // the equals — searching "Joseph" among eleven of them should lead with
+      // the one Genesis spends fourteen chapters on, and searching "Zechariah"
+      // with the prophet rather than a gatekeeper named once in Chronicles.
+      score: best.score + (entry.kind === 'place' ? 20 : 0) + prominence(entry.weight),
+      placeIds: entry.placeIds.filter((id) => PLACE_BY_ID.has(id)),
+    };
+    (isProse ? prose : results).push(result);
   }
 
-  return results.sort((a, b) => b.score - a.score || a.title.localeCompare(b.title)).slice(0, MAX_RESULTS);
+  const byScore = (a: SearchResult, b: SearchResult) =>
+    b.score - a.score || a.title.localeCompare(b.title);
+
+  results.sort(byScore);
+
+  // Fill any room the named matches leave. A query like "shipwreck" or "siege
+  // ramp" matches no name at all and is answered entirely from here.
+  if (results.length < MAX_RESULTS) {
+    results.push(...prose.sort(byScore).slice(0, MAX_RESULTS - results.length));
+  }
+
+  return results.slice(0, MAX_RESULTS);
+}
+
+/**
+ * Prominence, compressed so it orders equals without ever outweighing the match
+ * itself. A place named in four hundred chapters scores about 12 here, one named
+ * once scores 0 — enough to sort a page of identical names, never enough to lift
+ * a substring match above a prefix match.
+ */
+function prominence(weight: number): number {
+  return weight <= 0 ? 0 : Math.min(15, Math.log2(weight + 1) * 1.4);
 }

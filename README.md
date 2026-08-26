@@ -20,11 +20,14 @@ that jumps the map to a book's historical setting and can narrow to a single
 chapter.
 
 **Search that understands the domain.** Modern names, ancient names, Hebrew and
-Greek in script or transliteration, aliases, people, events, competing site
-identifications, and scripture references (`Acts 16`, `1 Kings 12:28`, `Jn 4`).
-Searching a person frames every city they are attested in and opens a short
-profile — description, the places they appear at, and the datable events they
-take part in.
+Greek — in script (pointed or not, accented or not) or in transliteration —
+aliases, disambiguated Strong's numbers, competing site identifications, and
+scripture references (`Acts 16`, `1 Kings 12:28`, `Jn 4`). It reaches everything
+the corpus holds: the hall of Tyrannus, the three men named Abdi (told apart by
+tribe and era in the result line), the province of Asia, the Sadducees, the month
+of Adar. Searching a person frames every city they are attested in and opens a
+profile — description, family as clickable links out into the genealogies, the
+places they appear at, and the datable events they take part in.
 
 **Every reference opens in Logos.** A place's chapter and verse references are
 links into [Logos Bible Software](https://www.logos.com/) (via `ref.ly`, which
@@ -62,23 +65,59 @@ southern tradition is Byzantine, not ancient.
 
 ## Coverage
 
-- **Every place named in the Protestant Bible**, indexed to the chapter — about
-  1,300 places drawn from [OpenBible.info Bible Geocoding](https://www.openbible.info/geo/)
+**Every proper name in the Protestant Bible**, indexed to the chapter. Three
+comprehensive layers are merged at load, with a hand-written core on top:
+
+- **~1,430 places** from [OpenBible.info Bible Geocoding](https://www.openbible.info/geo/)
   (CC BY 4.0), which disambiguates each place, catalogues it by verse, and rates
   the confidence of its modern identification.
-- **A curated core of ~70 major sites** carries fuller detail on top of that
-  base: written descriptions, Hebrew/Greek names, archaeology and cited sources.
-  Where a curated entry and an OpenBible record are the same place (matched by
-  name *and* location) they are folded together, so nothing is double-pinned.
+- **~3,150 people**, individuated, from [STEPBible TIPNR](https://github.com/STEPBible/STEPBible-Data)
+  (Tyndale House Cambridge, CC BY 4.0) — with the Hebrew or Greek of every form
+  of the name, the disambiguated Strong's numbers, the family links out of the
+  genealogies, and an exhaustive reference list. *Individuated* is the word that
+  matters: there are seven men called Zechariah and eleven called Joseph, and the
+  corpus knows which verse belongs to which one.
+- **~100 subjects** that are named but are neither people nor places — gods and
+  angels, festivals and months, sects and schools, musical directions in the
+  psalm headings, the constellations of Job. Searchable, deliberately never
+  mapped: "Passover" is something a reader looks up, not a place to pin.
+
+**Places inside places.** Around 330 locations are recorded as sitting *in* or
+*near* a settlement rather than standing alone — the Areopagus in Athens, the
+pool of Bethesda and every named gate of Jerusalem, Solomon's Portico, the Ophel,
+the Millo, Gabbatha. They stay off the plate until zoom 9 and then appear on
+their own layer. Where a source records only that something was "in Jerusalem",
+the map fans it around the city centre so it can be picked out, and the panel
+says plainly that the marker's position carries no claim.
+
+**Territories.** Roman provinces, geographical regions and the tribal allotments,
+shaded the way the empires are and toggled separately from them: Asia, Macedonia,
+Achaia, Galatia, Bithynia and Pontus, Cappadocia, Cilicia, Syria, Judaea, Crete,
+Cyprus, Illyricum; Galilee, Samaria, Judea, Idumea, Perea, the Decapolis, Gilead,
+Bashan, the Negev, the Shephelah, Sharon, the Jezreel valley, Goshen, the Arabah;
+and the thirteen allotments of Joshua 13-19.
+
+**Witnesses from outside the Bible.** The curated entries — ~70 major sites and
+~40 named venues — carry the ancient testimony for what they claim: Josephus on
+the temple porticoes and Herod's harbour, Strabo on Ephesus, Pausanias on the
+Areopagus, Tacitus on the imperial cult in Asia, the Gallio inscription, the
+Pilate stone, the Theodotus inscription, the Siloam tunnel inscription, and the
+excavation reports. Each is named, dated, located in its own work, marked as
+text or inscription or excavation, and linked to a public-domain edition where
+one exists. Every entry in the corpus additionally gets constructed links into a
+concordance, a lexicon and the ancient-world gazetteers.
+
 - **Every book is indexed.** A chapter with no places genuinely names none — the
   book view marks it plainly rather than leaving it in an "unverified" state.
-- **Routes are drawn arcs, and now interactive.** Each is clickable and opens its
+- **Routes are drawn arcs, and interactive.** Each is clickable and opens its
   own panel; animating them along the path is a next step and needs no data
   changes.
 - **Going public needs a one-time Stadia Maps step.** See below.
 
-The gazetteer is regenerated with `node scripts/build-gazetteer.mjs` from the
-OpenBible source data; see the script header for the exact input and provenance.
+The place gazetteer is regenerated with `node scripts/build-gazetteer.mjs`, and
+the people, sites and subjects with `node scripts/build-nomenclature.mjs`. Each
+script's header names its exact input and provenance; both read a source file you
+download once and emit compact JSON into `src/atlas/data/`.
 
 ## The basemap
 
@@ -126,12 +165,34 @@ coordinates are given for the excavated tell where one is identified, not the
 modern town that inherited the name — for Jericho and Beth-shemesh these are more
 than a kilometre apart.
 
-The comprehensive layer — place identifications, coordinates, confidence ratings
-and verse references — comes from **OpenBible.info Bible Geocoding**, licensed
-CC BY 4.0, and is credited in the app. It is transformed into
-`src/atlas/data/gazetteer.generated.json` by `scripts/build-gazetteer.mjs`; the
-merge with the curated core and the chapter-index inversion happen at load in
-`src/atlas/data/gazetteer.ts`.
+The comprehensive layers come from two open datasets, both licensed CC BY 4.0 and
+both credited in the app:
+
+- **OpenBible.info Bible Geocoding** — place identifications, coordinates,
+  confidence ratings and verse references. Transformed into
+  `gazetteer.generated.json` by `scripts/build-gazetteer.mjs`.
+- **STEPBible TIPNR**, a work of Tyndale House Cambridge — every proper name,
+  individuated, with ancient-language forms, Strong's numbers, family relations
+  and exhaustive references. Transformed into `people.generated.json`,
+  `sites.generated.json` and `topics.generated.json` by
+  `scripts/build-nomenclature.mjs`.
+
+The merges — curated over OpenBible over TIPNR — and the chapter-index inversion
+happen at load, in `src/atlas/data/gazetteer.ts` for places and
+`src/atlas/data/nomenclature.ts` for people and subjects. Matching is on evidence
+rather than on name alone, because name alone gets it wrong: OpenBible holds
+"Samaria" as both a town and a region at one coordinate, TIPNR holds five Marys,
+and picking by name would silently attach one entry's references to another. See
+the comments in those two files for what each merge weighs.
+
+**One thing TIPNR ships that this atlas does not use.** The dataset includes
+per-entry prose written by an AI in 2024 and labelled as such by STEPBible. It is
+not carried here. Descriptions for the comprehensive layers are composed instead
+from the structured fields — office, tribe, era, family, reference count — which
+are Tyndale House's editorial work and can be checked against the text. An atlas
+that advertises its sources should not seat unverified prose beside them. If you
+want those articles, they are in the source file and the build script would need
+a dozen lines to carry them.
 
 Dates follow the standard anchors: the Assyrian eponym canon and the Babylonian
 Chronicles for the first millennium BC, Thiele's regnal synchronisms for the
@@ -156,8 +217,14 @@ inscription or excavation report, the entry says which.
 npm test
 ```
 
-86 tests. The most valuable are the corpus integrity checks: the data files are
-hand-written, so the realistic failure is not a logic bug but a typo in an id —
-a journey leg pointing at a site that does not exist, a chapter index referencing
-a chapter the book does not have. Those would fail silently at runtime as an
-empty panel or a route that does not draw. Here they fail at build time.
+115 tests. The most valuable are the corpus integrity checks. The hand-written
+files fail by typo — a journey leg pointing at a site that does not exist, a
+chapter index referencing a chapter the book does not have — and the merged
+layers fail by *mismatch*, which is worse, because a mismatch looks entirely
+normal at runtime: a full panel of plausible content that happens to belong to a
+different person. So `tests/nomenclature.test.ts` pins the ones that would go
+wrong first and be noticed last — that `mary` is the mother of Jesus and not one
+of the other four, that the husband of Mary survives an id collision that used to
+delete him, that no settlement is pinned twice, that no place contains itself,
+and that every family link resolves. All of it fails at build time instead of
+silently at read time.

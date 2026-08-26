@@ -1909,3 +1909,187 @@ a {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ── Sites within a place, and the honesty note about where the dot sits ───── */
+
+/*
+ * A site's parent, set above its name the way a printed gazetteer sets a
+ * sub-entry under its headword: smaller, in small caps, and clickable back up.
+ */
+.panel__within {
+  margin: 0 0 2px;
+  font-family: var(--font-heading);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-neutral-600);
+}
+
+.panel__within-link {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: var(--color-accent-700);
+  cursor: pointer;
+  border-bottom: 1px solid var(--color-accent-300);
+}
+
+.panel__within-link:hover {
+  border-bottom-color: var(--color-accent-700);
+}
+
+/* The note that a marker has been moved for legibility. Marked with the same
+   rule the competing-identification blocks use, so it reads as a caveat. */
+.confidence-explain--warn {
+  border-left: 2.5px solid var(--color-neutral-500);
+  padding-left: 10px;
+  margin-top: 8px;
+}
+
+.panel__tribe {
+  color: var(--color-neutral-600);
+}
+
+/* ── Family, as a walkable set of links ───────────────────────────────────── */
+
+.family-row {
+  display: grid;
+  grid-template-columns: 74px 1fr;
+  gap: 8px;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+
+.family-row__label {
+  font-family: var(--font-heading);
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-neutral-600);
+}
+
+/* ── Witnesses from outside the biblical text ─────────────────────────────── */
+
+.witnesses {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/*
+ * Each witness gets a rule down its left edge in the sea teal, deliberately not
+ * the terracotta the competing-identification blocks use: one marks a dispute
+ * inside the atlas, the other marks evidence from outside it, and they should
+ * not be mistaken for each other at a glance.
+ */
+.witness {
+  border-left: 2.5px solid var(--color-accent-2-500);
+  padding-left: 12px;
+  margin-bottom: 14px;
+}
+
+.witness__head {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 7px;
+}
+
+.witness__kind {
+  font-family: var(--font-heading);
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 2px 5px;
+  border: 1px solid var(--color-accent-2-500);
+  color: var(--color-accent-2-700);
+  background: var(--color-accent-2-200);
+}
+
+/* Material evidence reads differently from a text, so it is marked differently. */
+.witness__kind--inscription,
+.witness__kind--excavation {
+  border-color: var(--color-accent-600);
+  color: var(--color-accent-700);
+  background: #f3ddd0;
+}
+
+.witness__author {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--color-neutral-900);
+}
+
+.witness__date {
+  font-size: 12px;
+  font-style: italic;
+  color: var(--color-neutral-600);
+}
+
+.witness__work {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--color-neutral-700);
+}
+
+.witness__locus {
+  font-variant-numeric: tabular-nums;
+  color: var(--color-neutral-600);
+}
+
+.witness__note {
+  margin: 5px 0 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--color-text);
+}
+
+.witness__link {
+  display: inline-block;
+  margin-top: 5px;
+  font-family: var(--font-heading);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-accent-700);
+}
+
+/* ── Constructed reference links ──────────────────────────────────────────── */
+
+/*
+ * Kept visually quieter than the witnesses above. These are search boxes and
+ * lexicon pages, not evidence, and the difference has to survive skimming.
+ */
+.lookups {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+
+.lookups li {
+  display: grid;
+  gap: 1px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.lookups li:last-child {
+  border-bottom: 0;
+}
+
+.lookups a {
+  font-family: var(--font-heading);
+  font-size: 12.5px;
+  color: var(--color-accent-700);
+}
+
+.lookups__hint {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--color-neutral-600);
+}

@@ -1,10 +1,20 @@
 'use client';
 
 import type { Confidence, Place, ScriptureRef } from '@/atlas/types';
-import { resolveEvents, resolvePeople, resolvePolities, PLACE_BY_ID } from '@/atlas/corpus';
+import {
+  resolveEvents,
+  resolvePeople,
+  resolvePolities,
+  PLACE_BY_ID,
+  parentOf,
+  sitesWithin,
+} from '@/atlas/corpus';
 import { formatYear, formatYearRange } from '@/atlas/search';
+import { isDisplacedOnMap } from '@/lib/map-layers';
+import { linksForPlace } from '@/lib/external-links';
 import { ScriptureLink } from './ScriptureLink';
 import { PlaceGallery } from './PlaceGallery';
+import { ExternalWitnesses } from './ExternalWitnesses';
 
 interface PlacePanelProps {
   placeId: string;
@@ -73,12 +83,27 @@ export function PlacePanel({ placeId, onClose, onSelectPlace, onSelectPerson }: 
   const people = resolvePeople(place.people);
   const events = resolveEvents(place.events);
   const polities = resolvePolities(place.polities);
+  const parent = parentOf(place);
+  const sites = sitesWithin(place.id);
+  const displaced = isDisplacedOnMap(place);
 
   return (
     <aside className="panel sg-scroll" aria-label={`${place.name} — details`} tabIndex={-1}>
       <button type="button" className="panel__close" onClick={onClose}>
         Close ✕
       </button>
+
+      {/* A site reads as belonging to its settlement before it reads as itself:
+          "in Jerusalem" above "The Fish Gate", the way a printed gazetteer sets
+          a sub-entry under its headword. */}
+      {parent && (
+        <p className="panel__within">
+          {place.siteRelation === 'near' ? 'Near' : 'In'}{' '}
+          <button type="button" className="panel__within-link" onClick={() => onSelectPlace(parent.id)}>
+            {parent.name}
+          </button>
+        </p>
+      )}
 
       <h2 className="panel__name">{place.name}</h2>
       {place.modernName && <p className="panel__modern">Today {place.modernName}</p>}
@@ -90,6 +115,17 @@ export function PlacePanel({ placeId, onClose, onSelectPlace, onSelectPerson }: 
         </span>
       </p>
       <p className="confidence-explain">{CONFIDENCE_EXPLANATION[place.confidence]}</p>
+
+      {/* The map cannot draw fifty gates on one point, so it fans them around the
+          city. That is a drawing decision, and the reader is owed it plainly —
+          otherwise a legible dot passes for a located one. */}
+      {displaced && (
+        <p className="confidence-explain confidence-explain--warn">
+          Where this stood inside {parent?.name ?? 'the settlement'} is not recorded. The map places
+          it around the centre so it can be picked out and read; the position of the marker carries
+          no claim.
+        </p>
+      )}
 
       <AncientNames place={place} />
 
@@ -192,6 +228,29 @@ export function PlacePanel({ placeId, onClose, onSelectPlace, onSelectPerson }: 
         </section>
       )}
 
+      {sites.length > 0 && (
+        <section className="panel__section">
+          <h3 className="panel__heading">Named within it</h3>
+          <p className="panel__prose panel__prose--small" style={{ color: 'var(--color-neutral-700)' }}>
+            {sites.length} {sites.length === 1 ? 'location the text names' : 'locations the text names'}{' '}
+            inside or beside {place.name}. They appear on the map once you zoom in.
+          </p>
+          <ul className="chips">
+            {sites.map((site) => (
+              <li className="chips__item" key={site.id}>
+                <button
+                  type="button"
+                  onClick={() => onSelectPlace(site.id)}
+                  title={`${site.scripture.length} ${site.scripture.length === 1 ? 'passage' : 'passages'}`}
+                >
+                  {site.name}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {place.alternatives?.some((a) => a.coordinates) && (
         <section className="panel__section">
           <h3 className="panel__heading">Related sites in the atlas</h3>
@@ -208,6 +267,11 @@ export function PlacePanel({ placeId, onClose, onSelectPlace, onSelectPerson }: 
           </ul>
         </section>
       )}
+
+      <ExternalWitnesses
+        sources={place.externalSources}
+        links={linksForPlace({ name: place.name, strongs: place.strongs, coordinates: place.coordinates })}
+      />
 
       {place.sources.length > 0 && (
         <section className="panel__section">

@@ -34,11 +34,20 @@ interface AtlasState {
   selectedJourneyId: string | null;
   /** A single leg of the selected journey to isolate, or null for the whole route. */
   selectedLegIndex: number | null;
+  /** The shaded territory whose panel is open. Shares the drawer with a place. */
+  selectedTerritoryId: string | null;
+  /**
+   * The subject whose pop-up is open — a people, a sect, a festival, a god.
+   * These have no location, so unlike every other selection this one never moves
+   * the map. It is a modal overlay, like a person.
+   */
+  selectedTopicId: string | null;
   /** Place ids the map should frame, e.g. after a person search. */
   focusPlaceIds: string[];
   /** Journey ids drawn as routes. */
   activeJourneyIds: string[];
   showPolities: boolean;
+  showTerritories: boolean;
   searchQuery: string;
 
   setYear: (year: number) => void;
@@ -50,12 +59,15 @@ interface AtlasState {
   selectPlace: (placeId: string | null) => void;
   selectPerson: (personId: string | null) => void;
   selectJourney: (journeyId: string | null) => void;
+  selectTerritory: (territoryId: string | null) => void;
+  selectTopic: (topicId: string | null) => void;
   /** Isolate one leg of the selected journey on the map, or null to show it whole. */
   selectJourneyLeg: (legIndex: number | null) => void;
   focusPlaces: (placeIds: string[]) => void;
   toggleJourney: (journeyId: string) => void;
   setJourneys: (journeyIds: string[]) => void;
   togglePolities: () => void;
+  toggleTerritories: () => void;
   setSearchQuery: (query: string) => void;
 }
 
@@ -74,9 +86,15 @@ export const useAtlas = create<AtlasState>((set, get) => ({
   selectedPersonId: null,
   selectedJourneyId: null,
   selectedLegIndex: null,
+  selectedTerritoryId: null,
+  selectedTopicId: null,
   focusPlaceIds: [],
   activeJourneyIds: [],
   showPolities: true,
+  // Off by default. Provinces, regions and allotments overlap each other and the
+  // empires, and three washes over the same coastline is a plate nobody can read
+  // — so the reader turns this on when they want it.
+  showTerritories: false,
   searchQuery: '',
 
   setYear: (year) => set({ year: clampYear(year) }),
@@ -84,8 +102,8 @@ export const useAtlas = create<AtlasState>((set, get) => ({
   setMode: (mode) =>
     set(
       mode === 'timeline'
-        ? { mode, bookId: null, chapter: null, selectedJourneyId: null, selectedLegIndex: null }
-        : { mode, selectedJourneyId: null, selectedLegIndex: null },
+        ? { mode, bookId: null, chapter: null, selectedJourneyId: null, selectedLegIndex: null, selectedTerritoryId: null }
+        : { mode, selectedJourneyId: null, selectedLegIndex: null, selectedTerritoryId: null },
     ),
 
   selectBook: (bookId, chapter = null) => {
@@ -108,11 +126,13 @@ export const useAtlas = create<AtlasState>((set, get) => ({
       selectedPersonId: null,
       selectedJourneyId: null,
       selectedLegIndex: null,
+      selectedTerritoryId: null,
       activeJourneyIds: [],
     });
   },
 
-  clearBook: () => set({ bookId: null, chapter: null, selectedJourneyId: null, selectedLegIndex: null }),
+  clearBook: () =>
+    set({ bookId: null, chapter: null, selectedJourneyId: null, selectedLegIndex: null, selectedTerritoryId: null }),
 
   setChapter: (chapter) => {
     const { bookId } = get();
@@ -126,15 +146,39 @@ export const useAtlas = create<AtlasState>((set, get) => ({
   // Selecting a place also dismisses any open person pop-up and journey panel, so
   // a click on the map never leaves a stale panel floating over an unrelated place.
   selectPlace: (placeId) =>
-    set({ selectedPlaceId: placeId, selectedPersonId: null, selectedJourneyId: null, selectedLegIndex: null }),
+    set({
+      selectedPlaceId: placeId,
+      selectedPersonId: null,
+      selectedJourneyId: null,
+      selectedLegIndex: null,
+      selectedTerritoryId: null,
+    }),
 
   selectPerson: (personId) => set({ selectedPersonId: personId }),
 
-  // A place and a journey share the right-hand drawer, so opening one closes the
-  // other; a person pop-up is a modal overlay and is cleared too. A fresh journey
-  // selection always starts showing the whole route (no leg isolated).
+  // A place, a journey and a territory all share the right-hand drawer, so opening
+  // one closes the others; a person pop-up is a modal overlay and is cleared too.
+  // A fresh journey selection always starts showing the whole route (no leg isolated).
   selectJourney: (journeyId) =>
-    set({ selectedJourneyId: journeyId, selectedLegIndex: null, selectedPlaceId: null, selectedPersonId: null }),
+    set({
+      selectedJourneyId: journeyId,
+      selectedLegIndex: null,
+      selectedPlaceId: null,
+      selectedPersonId: null,
+      selectedTerritoryId: null,
+    }),
+
+  selectTerritory: (territoryId) =>
+    set({
+      selectedTerritoryId: territoryId,
+      selectedPlaceId: null,
+      selectedJourneyId: null,
+      selectedLegIndex: null,
+      selectedPersonId: null,
+    }),
+
+  // A subject has no location, so opening one disturbs nothing else on the plate.
+  selectTopic: (topicId) => set({ selectedTopicId: topicId }),
 
   selectJourneyLeg: (legIndex) => set({ selectedLegIndex: legIndex }),
 
@@ -150,6 +194,8 @@ export const useAtlas = create<AtlasState>((set, get) => ({
   setJourneys: (journeyIds) => set({ activeJourneyIds: journeyIds }),
 
   togglePolities: () => set((state) => ({ showPolities: !state.showPolities })),
+
+  toggleTerritories: () => set((state) => ({ showTerritories: !state.showTerritories })),
 
   setSearchQuery: (searchQuery) => set({ searchQuery }),
 }));

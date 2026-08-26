@@ -67,6 +67,49 @@ export interface SourceNote {
   note: string;
 }
 
+/**
+ * What kind of witness an outside source is.
+ *
+ * The distinction is not decoration. A reader weighing whether Ephesus really
+ * held a riot in a theatre seating twenty-four thousand should be able to see at
+ * a glance that Luke's account is corroborated by an excavated building
+ * (`excavation`) and by a geographer writing a generation earlier (`geographer`),
+ * and that those are different kinds of claim from a Christian historian writing
+ * three centuries later (`historian`).
+ */
+export type WitnessKind =
+  | 'historian'
+  | 'geographer'
+  | 'inscription'
+  | 'papyrus'
+  | 'excavation'
+  | 'reference';
+
+/**
+ * A witness from outside the biblical text.
+ *
+ * This is the atlas's answer to "who else says so". Josephus on the temple
+ * porticoes, Strabo on the harbour at Ephesus, the Gallio inscription at Delphi,
+ * the Pilate stone from Caesarea — each named, located in its own work, and
+ * linked to a public-domain text where one exists, so the claim can be checked
+ * rather than taken.
+ */
+export interface ExternalSource {
+  /** The ancient author, or the excavator/institution for material evidence. */
+  author: string;
+  /** The work, inscription or report. */
+  work: string;
+  /** Book and section, catalogue number, or stratum — however that work is cited. */
+  locus?: string;
+  /** Roughly when the witness was written, for weighing distance from the events. */
+  date?: string;
+  kind: WitnessKind;
+  /** What this witness actually says about the entry. Stated fairly. */
+  note: string;
+  /** A public-domain text or catalogue record, where one exists. */
+  url?: string;
+}
+
 /** A competing identification for a contested site. */
 export interface Alternative {
   /** Modern site name proposed, e.g. "Tall el-Hammam". */
@@ -128,6 +171,21 @@ export interface Place {
   archaeology?: string;
   alternatives?: Alternative[];
   sources: SourceNote[];
+  /**
+   * The settlement this place sits inside or beside.
+   *
+   * A gate, a portico, a pool or a lecture hall is not a rival to the city that
+   * contains it, and drawing it as one would clutter the plate at every zoom.
+   * Recording the containment lets the map hold both: the city at a glance, and
+   * its named interior once the reader has zoomed in far enough to want it.
+   */
+  parentPlaceId?: string | null;
+  /** `in` for a location within the settlement, `near` for one in its vicinity. */
+  siteRelation?: 'in' | 'near';
+  /** Disambiguated Strong's numbers, which key the lexicon and concordance links. */
+  strongs?: string[];
+  /** Witnesses from outside the biblical text. */
+  externalSources?: ExternalSource[];
 }
 
 /** A named stretch of history the timeline can snap to. */
@@ -139,6 +197,25 @@ export interface Period {
   summary: string;
   /** Which books are principally set here. */
   books: string[];
+}
+
+/**
+ * Who a named figure is, at the coarsest useful grain.
+ *
+ * `group` is not a person at all — it is a people reckoned from an ancestor, the
+ * Perizzites or the Cherethites, which the sources name exactly as they name
+ * individuals. Keeping them in the same collection is right (they share every
+ * field that matters) but the interface must not offer a group a biography.
+ */
+export type PersonKind = 'male' | 'female' | 'group';
+
+/** Family links, as the genealogies give them. */
+export interface PersonRelations {
+  father?: string;
+  mother?: string;
+  siblings: string[];
+  partners: string[];
+  offspring: string[];
 }
 
 /** A person the atlas can locate. */
@@ -154,6 +231,52 @@ export interface Person {
   /** Place ids, roughly in narrative order. */
   places: string[];
   scripture: ScriptureRef[];
+  kind?: PersonKind;
+  /** Tribe or nation as the source assigns it, e.g. "Tribe of Levi", "Edom". */
+  tribe?: string;
+  /** Period ids the figure's lifetime falls within. */
+  periods?: string[];
+  /** Family links by person id, resolved against this same collection. */
+  relations?: PersonRelations;
+  /** Disambiguated Strong's numbers for every form of the name. */
+  strongs?: string[];
+  sources?: SourceNote[];
+  externalSources?: ExternalSource[];
+}
+
+/**
+ * Something named in the text that is not a person and not a place.
+ *
+ * Gods and angels, festivals and months, sects and schools, musical directions
+ * in the psalm headings, the constellations of Job. A study tool has to let you
+ * look these up — "Pharisee", "Passover", "Selah", "Molech" are exactly the words
+ * a reader stops on — but none of them has a location, and a map that pinned
+ * them would be inventing geography the text does not have. So they live in
+ * search and in their own panel, and never on the plate.
+ */
+export type TopicCategory =
+  | 'deity'
+  | 'festival'
+  | 'month'
+  | 'people-group'
+  | 'title'
+  | 'music'
+  | 'star'
+  | 'other';
+
+export interface Topic {
+  id: string;
+  name: string;
+  aliases: string[];
+  ancientNames: AncientNames;
+  category: TopicCategory;
+  /** The source's own one-line classification, e.g. "Name of the 1st month". */
+  role: string;
+  description: string;
+  scripture: ScriptureRef[];
+  strongs?: string[];
+  sources: SourceNote[];
+  externalSources?: ExternalSource[];
 }
 
 /** A datable happening tied to one or more places. */
@@ -215,6 +338,44 @@ export interface Polity {
   sources: SourceNote[];
 }
 
+/**
+ * What sort of area a territory is.
+ *
+ * Kept apart from `Polity` on purpose. A polity is a power — it has a capital, it
+ * makes war, it ends. A territory is a name for a piece of ground: the Roman
+ * province of Asia, the region of Galilee, the allotment of Judah. Paul writes to
+ * "the churches of Asia" and Luke has the Spirit forbid him to speak the word in
+ * Asia; the reader needs that shaded on the map the way the empire is, but Asia
+ * is not an empire and saying so would be wrong.
+ */
+export type TerritoryCategory = 'province' | 'region' | 'tribal-allotment' | 'district';
+
+/** A named area the map can shade. */
+export interface Territory {
+  id: string;
+  name: string;
+  aliases: string[];
+  ancientNames: AncientNames;
+  category: TerritoryCategory;
+  /** Years the name denotes this area. Provinces have sharp dates; regions do not. */
+  range: YearRange;
+  /**
+   * Coarse extent, at about a degree of resolution. As with polities these are
+   * zones, not surveyed boundaries — and for a Roman province the landward edge
+   * is frequently a scholarly reconstruction rather than a recorded line.
+   */
+  extent: GeoJSON.Polygon | GeoJSON.MultiPolygon;
+  color: string;
+  summary: string;
+  /** The gazetteer point of the same name, where one exists. */
+  placeId?: string | null;
+  /** The polity that governed it, e.g. Rome for a Roman province. */
+  polityId?: string | null;
+  scripture: ScriptureRef[];
+  sources: SourceNote[];
+  externalSources?: ExternalSource[];
+}
+
 /** A book of the canon, with the historical window it depicts. */
 export interface BookMeta {
   id: string;
@@ -245,5 +406,7 @@ export interface AtlasCorpus {
   events: HistoricalEvent[];
   journeys: Journey[];
   polities: Polity[];
+  territories: Territory[];
+  topics: Topic[];
   books: BookMeta[];
 }
