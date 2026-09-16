@@ -68,6 +68,49 @@ this application does not have.
 
 If the corpus grows past roughly two megabytes, the answer is to split it by
 region and load regions on demand — still static, still cached, still tested.
+The comprehensive nomenclature took the bundle to about 460 kB on first load,
+roughly 185 kB of that being the generated JSON over the wire; that is well
+inside the budget, but it is the reason the generated files store indexes into a
+string table rather than repeated prose, and the reason no description is shipped
+that can be composed at load from fields already present.
+
+## Merging three sources into one corpus
+
+The corpus is assembled from a hand-written core and two open datasets, and the
+interesting problem is not loading them but **deciding when two records are the
+same thing**.
+
+```
+curated core  ─┐
+curated sites ─┼─► gazetteer.ts     ─► places      (name + coordinate + kind)
+OpenBible     ─┤
+STEPBible     ─┘
+
+curated people ─┐
+STEPBible      ─┴─► nomenclature.ts ─► people      (references + role words + era)
+                                       topics
+```
+
+Name agreement alone is not enough and never was. OpenBible holds "Samaria" as
+both a town and a region at a single coordinate; TIPNR holds five Marys and
+eleven Josephs; curated Jerusalem lists Zion, Salem, Jebus, City of David and
+Ariel among its aliases, and OpenBible has a separate record for each of them
+within a few hundred metres of the Temple Mount. Each merge therefore scores on
+evidence:
+
+- **Places** match on head-name before alias, then on proximity — except for
+  regions, whose "coordinate" is a centroid somebody chose and which disagree
+  between datasets by hundreds of kilometres, so for those the shared name is the
+  evidence. A same-named record within two kilometres of the chosen one, *and of
+  the same kind*, is folded in as another name for it.
+- **People** match on shared scripture references first, then on shared words in
+  the role, then on an overlapping lifetime, with sheer prominence only as a
+  tie-break.
+
+A wrong merge is the failure mode that matters here, because it is invisible: the
+panel fills with plausible content that belongs to somebody else.
+`tests/nomenclature.test.ts` therefore pins the specific cases most likely to
+regress rather than only asserting the shape of the data.
 
 ## Layering
 
@@ -81,6 +124,7 @@ src/atlas/          Domain. Pure data and pure functions. No React, no DOM.
 src/lib/            Adapters between the domain and the map.
   basemap.ts        Basemap resolution and the licensing warning.
   map-layers.ts     Corpus entities → GeoJSON. Pure, and tested.
+  external-links.ts Constructed links into concordances and gazetteers.
 
 src/state/          Zustand store. The year is the single source of truth.
 src/components/     React. The map component owns the only imperative code.

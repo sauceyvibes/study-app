@@ -8,17 +8,23 @@ import { BookNavigator } from './BookNavigator';
 import { PlacePanel } from './PlacePanel';
 import { PersonPanel } from './PersonPanel';
 import { JourneyPanel } from './JourneyPanel';
+import { TerritoryPanel } from './TerritoryPanel';
+import { TopicPanel } from './TopicPanel';
 import { RouteSwatch } from './RouteGlyph';
 import { Timeline } from './Timeline';
 import {
   placesAtYear,
   politiesAtYear,
+  territoriesAtYear,
   journeysAtYear,
   placesForBook,
   journeysForBook,
   eventsNearYear,
   placeIdsForJourney,
+  rangeContains,
+  PLACE_BY_ID,
 } from '@/atlas/corpus';
+import { TERRITORY_CATEGORY_LABEL } from '@/atlas/data/territories';
 import { JOURNEY_BY_ID } from '@/atlas/corpus';
 import { BOOK_BY_ID } from '@/atlas/corpus';
 import { periodForYear } from '@/atlas/data/periods';
@@ -59,9 +65,12 @@ export function Atlas() {
   const selectedPersonId = useAtlas((s) => s.selectedPersonId);
   const selectedJourneyId = useAtlas((s) => s.selectedJourneyId);
   const selectedLegIndex = useAtlas((s) => s.selectedLegIndex);
+  const selectedTerritoryId = useAtlas((s) => s.selectedTerritoryId);
+  const selectedTopicId = useAtlas((s) => s.selectedTopicId);
   const focusPlaceIds = useAtlas((s) => s.focusPlaceIds);
   const activeJourneyIds = useAtlas((s) => s.activeJourneyIds);
   const showPolities = useAtlas((s) => s.showPolities);
+  const showTerritories = useAtlas((s) => s.showTerritories);
   const searchQuery = useAtlas((s) => s.searchQuery);
 
   const setYear = useAtlas((s) => s.setYear);
@@ -73,9 +82,12 @@ export function Atlas() {
   const selectPerson = useAtlas((s) => s.selectPerson);
   const selectJourney = useAtlas((s) => s.selectJourney);
   const selectJourneyLeg = useAtlas((s) => s.selectJourneyLeg);
+  const selectTerritory = useAtlas((s) => s.selectTerritory);
+  const selectTopic = useAtlas((s) => s.selectTopic);
   const focusPlaces = useAtlas((s) => s.focusPlaces);
   const toggleJourney = useAtlas((s) => s.toggleJourney);
   const togglePolities = useAtlas((s) => s.togglePolities);
+  const toggleTerritories = useAtlas((s) => s.toggleTerritories);
   const setSearchQuery = useAtlas((s) => s.setSearchQuery);
 
   const book = bookId ? BOOK_BY_ID.get(bookId) : undefined;
@@ -112,6 +124,11 @@ export function Atlas() {
 
   const polities = useMemo(() => (showPolities ? politiesAtYear(year) : []), [showPolities, year]);
 
+  const territories = useMemo(
+    () => (showTerritories ? territoriesAtYear(year) : []),
+    [showTerritories, year],
+  );
+
   // Whether any drawn journey has an inferred (dashed) leg, so the key can gloss
   // the dashed style only when it is actually on the plate. The legend appears
   // whenever there is territory or a route to decode.
@@ -119,7 +136,7 @@ export function Atlas() {
     () => journeys.some((j) => j.legs.some((l) => l.mode === 'inferred')),
     [journeys],
   );
-  const showLegend = polities.length > 0 || journeys.length > 0;
+  const showLegend = polities.length > 0 || journeys.length > 0 || territories.length > 0;
 
   // Choosing a book (or chapter) re-frames the map around that book's places —
   // picking Acts must carry the reader to the Aegean, not leave them parked
@@ -135,11 +152,40 @@ export function Atlas() {
   const availableJourneys = useMemo(() => journeysAtYear(year), [year]);
   const nearbyEvents = useMemo(() => eventsNearYear(year, 40), [year]);
 
+  /**
+   * Move the timeline to a place's own era when it is not already there.
+   *
+   * The year filters what the map draws, so searching the hall of Tyrannus from
+   * 850 BC used to fly the camera to Ephesus and show nothing at all: the panel
+   * opened, and the dot it described had been filtered out a thousand years
+   * before the building existed. Carrying the year along is the same rule
+   * selecting a book already follows — the reader asked for this place, and the
+   * year is a means of showing it rather than a constraint on being shown it.
+   */
+  const carryYearTo = useCallback(
+    (placeId: string) => {
+      const place = PLACE_BY_ID.get(placeId);
+      if (!place || rangeContains(place.occupation, year)) return;
+      const { start, end } = place.occupation;
+      setYear(Math.round((start + (end ?? start)) / 2));
+    },
+    [year, setYear],
+  );
+
+  /** Open a place: carry the year to it, select it, and frame it. */
+  const openPlace = useCallback(
+    (placeId: string) => {
+      carryYearTo(placeId);
+      selectPlace(placeId);
+      focusPlaces([placeId]);
+    },
+    [carryYearTo, selectPlace, focusPlaces],
+  );
+
   const handleSearchSelect = useCallback(
     (result: SearchResult) => {
       if (result.kind === 'place') {
-        selectPlace(result.id);
-        focusPlaces([result.id]);
+        openPlace(result.id);
         return;
       }
 
@@ -151,6 +197,23 @@ export function Atlas() {
 
       if (result.kind === 'period') {
         setMode('timeline');
+        return;
+      }
+
+      // A territory shades itself on the map and opens its panel. Turning the
+      // layer on is part of selecting one: a reader who searched "Asia" and got
+      // a panel but no wash would reasonably think the map had failed.
+      if (result.kind === 'territory') {
+        if (!showTerritories) toggleTerritories();
+        selectTerritory(result.id);
+        focusPlaces(result.placeIds);
+        return;
+      }
+
+      // A subject has no location, so this is the one result that leaves the map
+      // exactly as it was.
+      if (result.kind === 'topic') {
+        selectTopic(result.id);
         return;
       }
 
@@ -175,7 +238,19 @@ export function Atlas() {
       selectPlace(null);
       focusPlaces(result.placeIds);
     },
-    [selectPlace, selectPerson, selectJourney, focusPlaces, selectBook, setMode],
+    [
+      selectPlace,
+      selectPerson,
+      selectJourney,
+      selectTerritory,
+      selectTopic,
+      focusPlaces,
+      selectBook,
+      setMode,
+      showTerritories,
+      toggleTerritories,
+      carryYearTo,
+    ],
   );
 
   // Selecting a route from a list (rail chip, map key, search): isolate it on the
@@ -266,6 +341,11 @@ export function Atlas() {
             Show kingdoms and empires
           </label>
 
+          <label className="toggle">
+            <input type="checkbox" checked={showTerritories} onChange={toggleTerritories} />
+            Show provinces, regions and tribal land
+          </label>
+
           {/* In book mode the rail mirrors exactly what the map draws for the book
               — every one of its routes — and a click opens that route's panel. In
               timeline mode routes are an optional overlay you toggle on for the age. */}
@@ -328,13 +408,19 @@ export function Atlas() {
 
           <hr className="rule" />
           <p className="coverage-note">
-            Every place named in the Protestant Bible, indexed to the chapter, with a curated core
-            of major sites carrying fuller detail. Place identifications, coordinates and references
-            are drawn from{' '}
+            Every proper name in the Protestant Bible, indexed to the chapter: places and the gates,
+            pools and halls within them, every person, every people and sect, the provinces and
+            regions. A curated core carries fuller detail and witnesses from outside the Bible.
+            Place identifications, coordinates and references are drawn from{' '}
             <a href="https://www.openbible.info/geo/" target="_blank" rel="noreferrer">
               OpenBible.info Bible Geocoding
             </a>{' '}
-            (CC&nbsp;BY&nbsp;4.0); disputed identifications are shown with their alternatives.
+            (CC&nbsp;BY&nbsp;4.0); personal names, ancient-language forms and family relations from{' '}
+            <a href="https://github.com/STEPBible/STEPBible-Data" target="_blank" rel="noreferrer">
+              STEPBible TIPNR
+            </a>{' '}
+            (Tyndale House Cambridge, CC&nbsp;BY&nbsp;4.0). Disputed identifications are shown with
+            their alternatives.
           </p>
         </div>
       </div>
@@ -347,6 +433,7 @@ export function Atlas() {
               places={places}
               journeys={journeys}
               polities={polities}
+              territories={territories}
               highlightedIds={highlightedIds}
               selectedPlaceId={selectedPlaceId}
               selectedJourneyId={selectedJourneyId}
@@ -354,6 +441,7 @@ export function Atlas() {
               focusPlaceIds={focusPlaceIds}
               onSelectPlace={selectPlace}
               onRouteClick={handleRouteClick}
+              onSelectTerritory={selectTerritory}
             />
             <div className="plate__vignette" aria-hidden="true" />
             <PlateGrain />
@@ -416,7 +504,7 @@ export function Atlas() {
 
                 {polities.length > 0 && (
                   <div className="map-legend__group">
-                    <p className="map-legend__subtitle">Territory</p>
+                    <p className="map-legend__subtitle">Powers</p>
                     <ul className="map-legend__list">
                       {polities.map((polity) => (
                         <li key={polity.id}>
@@ -432,6 +520,35 @@ export function Atlas() {
                     <p className="map-legend__note">Zones of control, not surveyed borders.</p>
                   </div>
                 )}
+
+                {territories.length > 0 && (
+                  <div className="map-legend__group">
+                    <p className="map-legend__subtitle">Named ground</p>
+                    <ul className="map-legend__list map-legend__list--routes">
+                      {territories.map((territory) => (
+                        <li key={territory.id}>
+                          <button
+                            type="button"
+                            className="map-legend__route-row"
+                            onClick={() => selectTerritory(territory.id)}
+                            aria-pressed={territory.id === selectedTerritoryId}
+                            title={TERRITORY_CATEGORY_LABEL[territory.category]}
+                          >
+                            <span
+                              className="map-legend__swatch"
+                              style={{ background: territory.color, borderColor: territory.color }}
+                              aria-hidden="true"
+                            />
+                            {territory.name}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="map-legend__note">
+                      Provinces, regions and allotments. Generalised outlines.
+                    </p>
+                  </div>
+                )}
               </div>
             ))}
         </div>
@@ -442,7 +559,7 @@ export function Atlas() {
           <PlacePanel
             placeId={selectedPlaceId}
             onClose={() => selectPlace(null)}
-            onSelectPlace={selectPlace}
+            onSelectPlace={openPlace}
             onSelectPerson={selectPerson}
           />
         )}
@@ -452,10 +569,7 @@ export function Atlas() {
             journeyId={selectedJourneyId}
             isolatedLegIndex={selectedLegIndex}
             onClose={() => selectJourney(null)}
-            onSelectPlace={(id) => {
-              selectPlace(id);
-              focusPlaces([id]);
-            }}
+            onSelectPlace={openPlace}
             onSelectPerson={selectPerson}
             onIsolateLeg={(index) => {
               selectJourneyLeg(index);
@@ -470,16 +584,24 @@ export function Atlas() {
           />
         )}
 
+        {selectedTerritoryId && !selectedPlaceId && !selectedJourneyId && (
+          <TerritoryPanel
+            territoryId={selectedTerritoryId}
+            onClose={() => selectTerritory(null)}
+            onSelectPlace={openPlace}
+          />
+        )}
+
         {selectedPersonId && (
           <PersonPanel
             personId={selectedPersonId}
             onClose={() => selectPerson(null)}
-            onSelectPlace={(id) => {
-              selectPlace(id);
-              focusPlaces([id]);
-            }}
+            onSelectPlace={openPlace}
+            onSelectPerson={selectPerson}
           />
         )}
+
+        {selectedTopicId && <TopicPanel topicId={selectedTopicId} onClose={() => selectTopic(null)} />}
 
         {mode === 'book' && book && !selectedPlaceId && places.length === 0 && (
           <div className="map-notice map-notice--book">

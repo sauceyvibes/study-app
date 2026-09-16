@@ -16,6 +16,9 @@ const KIND_LABEL: Record<SearchResult['kind'], string> = {
   journey: 'Route',
   scripture: 'Text',
   period: 'Period',
+  // Named in the text but never drawn: peoples, sects, gods, festivals, months.
+  topic: 'Subject',
+  territory: 'Territory',
 };
 
 /**
@@ -65,7 +68,7 @@ export function SearchPanel({ query, onQueryChange, onSelect }: SearchPanelProps
           value={query}
           spellCheck={false}
           autoComplete="off"
-          placeholder="Jerusalem, Paul, Acts 16…"
+          placeholder="Jerusalem, Tyrannus, Asia, Acts 16…"
           onChange={(event) => onQueryChange(event.target.value)}
         />
         {trimmed.length > 0 && (
@@ -77,7 +80,10 @@ export function SearchPanel({ query, onQueryChange, onSelect }: SearchPanelProps
 
       {trimmed.length === 0 && (
         <p className="search__hint">
-          Ancient and modern names, Hebrew and Greek, people, events, and chapter references.
+          Every proper name in the Bible: places and the gates, pools and halls inside them, all
+          three thousand people, peoples and sects, provinces and regions, festivals and months.
+          Ancient or modern spelling, Hebrew or Greek, a Strong&rsquo;s number, or a chapter
+          reference.
         </p>
       )}
 

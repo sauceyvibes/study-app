@@ -4,13 +4,22 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import maplibregl, { type Map as MapLibreMap, type MapGeoJSONFeature, type GeoJSONSource } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { resolveBasemap, DEFAULT_VIEW, MAX_BOUNDS } from '@/lib/basemap';
-import { placesToGeoJSON, journeysToGeoJSON, politiesToGeoJSON, boundsFor, DECOR_LABELS } from '@/lib/map-layers';
-import type { Journey, Place, Polity } from '@/atlas/types';
+import {
+  placesToGeoJSON,
+  journeysToGeoJSON,
+  politiesToGeoJSON,
+  territoriesToGeoJSON,
+  boundsFor,
+  DECOR_LABELS,
+} from '@/lib/map-layers';
+import type { Journey, Place, Polity, Territory } from '@/atlas/types';
+import { PLACE_BY_ID } from '@/atlas/corpus';
 
 interface AtlasMapProps {
   places: Place[];
   journeys: Journey[];
   polities: Polity[];
+  territories: Territory[];
   highlightedIds: ReadonlySet<string>;
   selectedPlaceId: string | null;
   selectedJourneyId: string | null;
@@ -21,12 +30,30 @@ interface AtlasMapProps {
   onSelectPlace: (placeId: string | null) => void;
   /** A route was clicked: the journey and which leg of it. */
   onRouteClick: (journeyId: string, legIndex: number) => void;
+  /** A shaded territory was clicked. */
+  onSelectTerritory: (territoryId: string) => void;
 }
 
 /** Route layers, listed where a click or hover query needs both at once. */
 const ROUTE_LAYERS = ['route-line-solid', 'route-line-inferred'] as const;
 
-const SOURCES = { places: 'atlas-places', routes: 'atlas-routes', polities: 'atlas-polities', decor: 'atlas-decor' } as const;
+const SOURCES = {
+  places: 'atlas-places',
+  routes: 'atlas-routes',
+  polities: 'atlas-polities',
+  territories: 'atlas-territories',
+  decor: 'atlas-decor',
+} as const;
+
+/**
+ * The zoom at which a settlement's named interior appears.
+ *
+ * Below this the map shows cities; at and above it, the gates, pools, porticoes
+ * and halls inside them. Nine is about where a single city fills the plate, which
+ * is exactly the point at which a reader has stopped looking at the region and
+ * started looking at the place.
+ */
+const INTERIOR_MIN_ZOOM = 9;
 
 /**
  * The plate palette, mirroring the design tokens in globals.css. MapLibre paint
@@ -72,6 +99,7 @@ export function AtlasMap({
   places,
   journeys,
   polities,
+  territories,
   highlightedIds,
   selectedPlaceId,
   selectedJourneyId,
@@ -79,6 +107,7 @@ export function AtlasMap({
   focusPlaceIds,
   onSelectPlace,
   onRouteClick,
+  onSelectTerritory,
 }: AtlasMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
@@ -104,7 +133,11 @@ export function AtlasMap({
       zoom: DEFAULT_VIEW.zoom,
       maxBounds: MAX_BOUNDS,
       minZoom: 3,
-      maxZoom: 12,
+      // Raised from 12 once settlements gained a named interior. At 12 the fan of
+      // sites around Jerusalem spans about forty pixels and only two of fourteen
+      // labels can be placed; by 14 there is room to read them, which is the
+      // whole point of having drawn them.
+      maxZoom: 14,
       attributionControl: { compact: true },
       // Pitch and rotation are disabled deliberately. A tilted historical atlas
       // is a novelty that costs legibility, and locking north-up means our label
@@ -203,6 +236,13 @@ export function AtlasMap({
     setSourceData(map, SOURCES.polities, politiesToGeoJSON(polities));
   }, [polities, status]);
 
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || status !== 'ready') return;
+
+    setSourceData(map, SOURCES.territories, territoriesToGeoJSON(territories));
+  }, [territories, status]);
+
   // ── Selection ring ───────────────────────────────────────────────────────
   useEffect(() => {
     selectedRef.current = selectedPlaceId;
@@ -252,6 +292,24 @@ export function AtlasMap({
     const map = mapRef.current;
     if (!map || status !== 'ready' || focusPlaceIds.length === 0) return;
 
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // Searching an interior site has to arrive at a zoom where interior sites are
+    // drawn, or the reader is taken to the right city and shown nothing. Fitting
+    // a bounding box around a single point cannot guarantee that — the padding
+    // decides the zoom — so this goes straight there instead.
+    if (focusPlaceIds.length === 1) {
+      const only = PLACE_BY_ID.get(focusPlaceIds[0]!);
+      if (only?.coordinates && only.siteRelation === 'in' && only.parentPlaceId) {
+        map.easeTo({
+          center: only.coordinates,
+          zoom: Math.max(map.getZoom(), INTERIOR_MIN_ZOOM + 1.5),
+          duration: reduceMotion ? 0 : 900,
+        });
+        return;
+      }
+    }
+
     const bounds = boundsFor(focusPlaceIds);
     if (!bounds) return;
 
@@ -268,7 +326,7 @@ export function AtlasMap({
     map.fitBounds(bounds, {
       padding: { top: 60, bottom: 60, left: 60, right },
       maxZoom: 9,
-      duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 900,
+      duration: reduceMotion ? 0 : 900,
     });
   }, [focusPlaceIds, status]);
 
@@ -279,9 +337,11 @@ export function AtlasMap({
 
     const handleClick = (event: maplibregl.MapMouseEvent) => {
       // Places take priority: a dot sitting on top of a route should select the
-      // place, not the line under it.
+      // place, not the line under it. Interior sites come first among those — at
+      // the zoom where they are drawn they sit over their own city's dot, and the
+      // reader clicking the Fish Gate means the Fish Gate.
       const placeHits = map.queryRenderedFeatures(event.point, {
-        layers: ['place-dot', 'place-label'],
+        layers: ['site-dot', 'site-label', 'place-dot', 'place-label'],
       }) as MapGeoJSONFeature[];
       const placeId = placeHits[0]?.properties?.['id'];
       if (typeof placeId === 'string') {
@@ -304,6 +364,19 @@ export function AtlasMap({
         return;
       }
 
+      // A shaded territory is the last thing consulted, because it covers whole
+      // regions and would otherwise swallow every click meant for empty ground.
+      // The topmost hit is the smallest area, since the fill layer draws large to
+      // small — so clicking inside Judah opens Judah, not the empire over it.
+      const territoryHits = map.queryRenderedFeatures(event.point, {
+        layers: ['territory-fill'],
+      }) as MapGeoJSONFeature[];
+      const territoryId = territoryHits[territoryHits.length - 1]?.properties?.['id'];
+      if (typeof territoryId === 'string') {
+        onSelectTerritory(territoryId);
+        return;
+      }
+
       // Empty ground clears whatever panel is open.
       onSelectPlace(null);
     };
@@ -315,7 +388,7 @@ export function AtlasMap({
       map.getCanvas().style.cursor = '';
     };
 
-    const hoverLayers = ['place-dot', ...ROUTE_LAYERS];
+    const hoverLayers = ['place-dot', 'site-dot', ...ROUTE_LAYERS];
 
     map.on('click', handleClick);
     for (const layer of hoverLayers) {
@@ -330,7 +403,7 @@ export function AtlasMap({
         map.off('mouseleave', layer, hidePointer);
       }
     };
-  }, [onSelectPlace, onRouteClick, status]);
+  }, [onSelectPlace, onRouteClick, onSelectTerritory, status]);
 
   return (
     <>
@@ -385,6 +458,7 @@ export function AtlasMap({
  * layer count low and lets a single `setData` call restyle the whole map.
  */
 function installLayers(map: MapLibreMap): void {
+  map.addSource(SOURCES.territories, { type: 'geojson', data: emptyCollection() });
   map.addSource(SOURCES.polities, { type: 'geojson', data: emptyCollection() });
   map.addSource(SOURCES.routes, { type: 'geojson', data: emptyCollection() });
   map.addSource(SOURCES.places, { type: 'geojson', data: emptyCollection() });
@@ -418,6 +492,34 @@ function installLayers(map: MapLibreMap): void {
       'text-opacity': 0.6,
       'text-halo-color': INK.haloSoft,
       'text-halo-width': 1,
+    },
+  });
+
+  // Named ground — provinces, regions, tribal allotments. Under the polities,
+  // because an empire contains its provinces and the wash should read that way,
+  // and drawn lighter for the same reason. Sorted largest-first by the feature
+  // builder so a small allotment is never buried under the province around it.
+  map.addLayer({
+    id: 'territory-fill',
+    type: 'fill',
+    source: SOURCES.territories,
+    paint: {
+      'fill-color': ['get', 'color'],
+      'fill-opacity': 0.11,
+    },
+  });
+
+  map.addLayer({
+    id: 'territory-edge',
+    type: 'line',
+    source: SOURCES.territories,
+    paint: {
+      'line-color': ['get', 'color'],
+      'line-width': 1,
+      'line-opacity': 0.45,
+      // A finer dash than the polities use, so the two washes stay distinguishable
+      // where they overlap — which, for a Roman province, is everywhere.
+      'line-dasharray': [2, 2],
     },
   });
 
@@ -538,6 +640,9 @@ function installLayers(map: MapLibreMap): void {
     id: 'place-dot',
     type: 'circle',
     source: SOURCES.places,
+    // Settlements only. What lies inside them has its own pair of layers below,
+    // held back until the reader has zoomed in far enough to want it.
+    filter: ['!', ['get', 'interior']],
     paint: {
       'circle-radius': [
         'interpolate',
@@ -570,6 +675,7 @@ function installLayers(map: MapLibreMap): void {
     id: 'place-label',
     type: 'symbol',
     source: SOURCES.places,
+    filter: ['!', ['get', 'interior']],
     layout: {
       'text-field': ['get', 'name'],
       'text-font': ['Noto Sans Regular'],
@@ -587,6 +693,96 @@ function installLayers(map: MapLibreMap): void {
       'text-color': ['case', ['get', 'highlighted'], INK.accent, INK.text],
       'text-halo-color': INK.halo,
       'text-halo-width': 1.6,
+    },
+  });
+
+  /*
+   * The interior of a settlement: gates, pools, porticoes, towers, the hall Paul
+   * hired. Held back until zoom 9 for the reason a printed atlas puts a city
+   * inset on its own plate — at regional scale these are illegible clutter, and
+   * at city scale they are the whole point.
+   *
+   * Drawn as small open squares rather than circles so they never read as rival
+   * settlements: a different mark for a different kind of thing, which is the
+   * same argument the confidence key makes about fill and stroke.
+   */
+  map.addLayer({
+    id: 'site-dot',
+    type: 'circle',
+    source: SOURCES.places,
+    filter: ['get', 'interior'],
+    minzoom: INTERIOR_MIN_ZOOM,
+    paint: {
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 9, 2.6, 14, 5.5],
+      'circle-color': INK.parchment,
+      'circle-stroke-color': INK.accent2,
+      'circle-stroke-width': ['case', ['get', 'highlighted'], 2, 1.2],
+      'circle-opacity': 0.95,
+    },
+  });
+
+  map.addLayer({
+    id: 'site-label',
+    type: 'symbol',
+    source: SOURCES.places,
+    filter: ['get', 'interior'],
+    minzoom: INTERIOR_MIN_ZOOM,
+    layout: {
+      'text-field': ['get', 'name'],
+      'text-font': ['Noto Sans Regular'],
+      'text-size': ['interpolate', ['linear'], ['zoom'], 9, 10, 14, 13],
+      'text-anchor': 'left',
+      'text-offset': [0.6, 0],
+      'text-max-width': 9,
+      'text-allow-overlap': false,
+      'text-optional': true,
+    },
+    paint: {
+      'text-color': ['case', ['get', 'highlighted'], INK.accent, INK.accent2Deep],
+      'text-halo-color': INK.halo,
+      'text-halo-width': 1.6,
+    },
+  });
+
+  /*
+   * Territory names, placed last on purpose.
+   *
+   * MapLibre resolves label collisions in favour of whichever layer comes later
+   * in the style, so with this layer where it belongs visually — down beneath the
+   * territory wash — the settlement names took every position and the provinces
+   * went unnamed: Asia would shade half of Asia Minor with nothing written on it.
+   * Placed last, thirteen regions label where eight did, and the settlements are
+   * barely affected (they hold thirty-six labels either way) because a handful of
+   * widely spaced regional names competes for very little of the plate.
+   *
+   * The cost is that these draw over the settlement names rather than under them,
+   * so they are set to read as ground rather than as figure: pale, letterspaced,
+   * upper-case, tinted to the territory, and carrying a heavy halo so anything
+   * crossing them stays legible.
+   */
+  map.addLayer({
+    id: 'territory-label',
+    type: 'symbol',
+    source: SOURCES.territories,
+    layout: {
+      'text-field': ['get', 'name'],
+      'text-font': ['Noto Sans Regular'],
+      'text-size': ['interpolate', ['linear'], ['zoom'], 4, 10, 9, 14],
+      'text-letter-spacing': 0.3,
+      'text-transform': 'uppercase',
+      'text-max-width': 8,
+      'symbol-placement': 'point',
+      'text-allow-overlap': false,
+      'text-optional': true,
+      // Big areas label first, matching the fill order, so a province is named
+      // before the allotment inside it when only one of them will fit.
+      'symbol-sort-key': ['*', -1, ['get', 'area']],
+    },
+    paint: {
+      'text-color': ['get', 'color'],
+      'text-opacity': 0.62,
+      'text-halo-color': INK.halo,
+      'text-halo-width': 2.2,
     },
   });
 }

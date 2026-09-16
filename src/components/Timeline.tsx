@@ -83,7 +83,6 @@ export function Timeline({ year, onChange }: TimelineProps) {
       <div className="timeline__scale" aria-hidden="true">
         <span>{formatYear(TIMELINE_BOUNDS.start)}</span>
         <span>1000 BC</span>
-        <span>1 BC</span>
         <span>{formatYear(TIMELINE_BOUNDS.end)}</span>
       </div>
     </div>

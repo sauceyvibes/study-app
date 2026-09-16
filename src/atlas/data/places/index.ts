@@ -25,7 +25,7 @@ export const PLACES: Place[] = [
 ];
 
 export const ATLAS_COVERAGE = {
-  version: '0.2.0',
+  version: '0.3.0',
   statement:
-    'Every place named in the Protestant Bible is indexed to the chapter, drawn from OpenBible.info Bible Geocoding (CC BY 4.0). A curated core of major sites carries fuller detail — descriptions, ancient names, archaeology and sources — layered on top of that comprehensive base.',
+    'Every proper name in the Protestant Bible is indexed to the chapter: places from OpenBible.info Bible Geocoding (CC BY 4.0), and people, peoples, ancient-language forms and the locations named within settlements from STEPBible TIPNR (Tyndale House Cambridge, CC BY 4.0). A curated core carries fuller detail — descriptions, archaeology, competing identifications and witnesses from outside the biblical text — layered on top of that comprehensive base.',
 } as const;
