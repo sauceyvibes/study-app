@@ -1,4 +1,7 @@
 # Sacred Geography
+
+> **This is the `additions` branch: the admin site.** It is deployed on its own
+> subdomain and must never be merged into main. See [`docs/admin.md`](docs/admin.md).
  
 An interactive historical atlas of the Bible: places, people, routes and empires
 from the patriarchal age to the apostolic mission, with the scholarly uncertainty
@@ -210,6 +213,8 @@ inscription or excavation report, the entry says which.
   and why the corpus is not in Firestore
 - [`docs/firebase.md`](docs/firebase.md) — Firebase setup for user data, with
   security rules
+- [`docs/admin.md`](docs/admin.md) — the admin site on this branch: deployment,
+  field formats, and keeping it off main
 
 ## Tests
 

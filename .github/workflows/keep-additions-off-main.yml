@@ -1,0 +1,27 @@
+# The `additions` branch is the admin site. It is deployed on its own domain and
+# must never be merged into main — main receives the admin's *data* as commits to
+# src/atlas/data/additions/, never its code. This check fails any pull request
+# from it into main. Make it required under Settings → Branches → main to enforce.
+#
+# This file lives only on `additions`; for pull_request events GitHub runs the
+# workflow as it exists in the PR's merge commit, so it fires exactly when this
+# branch is proposed for main.
+name: Keep additions off main
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  block:
+    name: additions must not merge into main
+    runs-on: ubuntu-latest
+    steps:
+      - name: Refuse the admin branch
+        if: github.head_ref == 'additions'
+        run: |
+          echo "::error::The additions branch is the admin site and must never be merged into main."
+          exit 1
+      - name: Not the admin branch
+        if: github.head_ref != 'additions'
+        run: echo "OK"
