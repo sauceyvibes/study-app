@@ -12,13 +12,18 @@ import type {
 } from './types';
 import { ATLAS_COVERAGE } from './data/places';
 import { PERIODS } from './data/periods';
-import { EVENTS } from './data/events';
-import { JOURNEYS } from './data/journeys';
-import { POLITIES } from './data/polities';
-import { TERRITORIES } from './data/territories';
+import { EVENTS as BASE_EVENTS } from './data/events';
+import { JOURNEYS as BASE_JOURNEYS } from './data/journeys';
+import { POLITIES as BASE_POLITIES } from './data/polities';
+import { TERRITORIES as BASE_TERRITORIES } from './data/territories';
 import { BOOKS as BASE_BOOKS } from './data/books';
 import { ASSEMBLED_PLACES, CHAPTER_INDEX, GAZETTEER_ATTRIBUTION } from './data/gazetteer';
-import { ALL_PEOPLE, TOPICS, NOMENCLATURE_ATTRIBUTION } from './data/nomenclature';
+import {
+  ALL_PEOPLE as BASE_PEOPLE,
+  TOPICS as BASE_TOPICS,
+  NOMENCLATURE_ATTRIBUTION,
+} from './data/nomenclature';
+import { ADDITIONS, mergeById } from './data/additions';
 
 export { ATLAS_COVERAGE, GAZETTEER_ATTRIBUTION, NOMENCLATURE_ATTRIBUTION };
 
@@ -38,8 +43,31 @@ export { ATLAS_COVERAGE, GAZETTEER_ATTRIBUTION, NOMENCLATURE_ATTRIBUTION };
  * Curated first throughout, so a curated entry wins any id lookup.
  */
 
-/** Curated first, so their richer entries win the id lookup. */
-export const PLACES: Place[] = ASSEMBLED_PLACES;
+/**
+ * Curated first, so their richer entries win the id lookup. Admin additions
+ * (`data/additions/`) are merged last and replace any entry sharing their id.
+ */
+export const PLACES: Place[] = mergeById(ASSEMBLED_PLACES, ADDITIONS.places);
+const ALL_PEOPLE: Person[] = mergeById(BASE_PEOPLE, ADDITIONS.people);
+const TOPICS = mergeById(BASE_TOPICS, ADDITIONS.topics);
+const EVENTS: HistoricalEvent[] = mergeById(BASE_EVENTS, ADDITIONS.events);
+const JOURNEYS: Journey[] = mergeById(BASE_JOURNEYS, ADDITIONS.journeys);
+const POLITIES: Polity[] = mergeById(BASE_POLITIES, ADDITIONS.polities);
+const TERRITORIES: Territory[] = mergeById(BASE_TERRITORIES, ADDITIONS.territories);
+
+/** The comprehensive chapter index, with the chapters admin-added places cite. */
+const MERGED_CHAPTER_INDEX = (() => {
+  const index: Record<string, Record<number, string[]>> = {};
+  for (const [book, chapters] of Object.entries(CHAPTER_INDEX)) index[book] = { ...chapters };
+  for (const place of ADDITIONS.places) {
+    for (const ref of place.scripture) {
+      const chapters = (index[ref.book] ??= {});
+      const ids = chapters[ref.chapter] ?? [];
+      if (!ids.includes(place.id)) chapters[ref.chapter] = [...ids, place.id].sort();
+    }
+  }
+  return index;
+})();
 
 /**
  * Books with the comprehensive chapter index merged in. Every book is now marked
@@ -48,7 +76,7 @@ export const PLACES: Place[] = ASSEMBLED_PLACES;
  */
 export const BOOKS: BookMeta[] = BASE_BOOKS.map((book) => ({
   ...book,
-  placesByChapter: CHAPTER_INDEX[book.id] ?? {},
+  placesByChapter: MERGED_CHAPTER_INDEX[book.id] ?? {},
   indexed: true,
 }));
 
