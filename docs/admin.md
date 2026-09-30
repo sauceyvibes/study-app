@@ -1,9 +1,9 @@
 # The admin site
 
-The `additions` branch is a separate deployment of this repository: a
-password-protected editor for adding and correcting places, routes, kingdoms,
+The `additions` branch is a separate deployment of this repository: an editor for adding and correcting places, routes, kingdoms,
 territories, events, people and subjects. It runs on its own domain or subdomain
-and **is never merged into main.**
+and **is never merged into main.** It has no login of its own; Cloudflare Zero
+Trust (Access) guards its domain.
 
 ## How it works
 
@@ -64,24 +64,42 @@ Use the same Vercel project that serves main:
 1. **Domain.** Go to Project → Settings → Domains and add `admin.yourdomain.com`.
    In its settings, choose **Git Branch: `additions`**. Then add the DNS record
    Vercel shows you (usually a `CNAME` to `cname.vercel-dns.com`).
-2. **Environment variables.** Go to Project → Settings → Environment Variables.
+2. **Cloudflare Access.** Put the subdomain behind an Access application in Zero
+   Trust as you normally would. Then note two values:
+   - your **team domain** (Zero Trust → Settings → Custom Pages, e.g.
+     `yourteam.cloudflareaccess.com`)
+   - the application's **Application Audience (AUD) tag** (Access →
+     Applications → your app → Overview)
+3. **Environment variables.** Go to Project → Settings → Environment Variables.
    For each variable below, pick the **Preview** environment and **only the
-   `additions` branch**, so production (main) never gets the token or password.
+   `additions` branch**, so production (main) never gets the token.
 
    | Variable | Value |
    | --- | --- |
-   | `ADMIN_PASSWORD` | A long passphrase. Changing it signs everyone out. |
-   | `ADMIN_SESSION_SECRET` | Any long random string (`openssl rand -hex 32`). |
    | `GITHUB_TOKEN` | A fine-grained personal access token, limited to the repository `sauceyvibes/study-app`, with permission **Contents: Read and write**. |
+   | `CF_ACCESS_TEAM_DOMAIN` | Your team domain, e.g. `yourteam.cloudflareaccess.com`. |
+   | `CF_ACCESS_AUD` | The application's AUD tag. |
    | `GITHUB_REPO` | Optional. Defaults to `sauceyvibes/study-app`. |
    | `GITHUB_TARGET_BRANCH` | Optional. Defaults to `main`. Set another branch to stage edits there instead. |
 
-3. Redeploy the `additions` branch. `admin.yourdomain.com` then redirects to the
-   login page.
+4. Redeploy the `additions` branch. `admin.yourdomain.com` then goes through the
+   Cloudflare login and lands on the editor.
 
-The admin pages are marked `noindex`. Every `/admin` and `/api/admin` request
-needs a signed session cookie (HttpOnly, SameSite=Strict, valid 7 days), and each
-wrong password costs a one-second delay.
+### Why the Cloudflare variables matter
+
+Cloudflare only protects the traffic that goes through Cloudflare. Vercel also
+serves this deployment at its own `*.vercel.app` addresses, and anyone can send a
+request straight to Vercel with your domain in the `Host` header. Either way
+skips Cloudflare entirely. Anyone who got in that way could commit to main with
+the site's GitHub token.
+
+So the middleware checks the JWT that Access adds to every request it lets
+through (`Cf-Access-Jwt-Assertion`). It must be signed by your team's keys and
+issued for this application, or the request gets a 403. With
+`CF_ACCESS_TEAM_DOMAIN` and `CF_ACCESS_AUD` unset, nothing is checked, which suits
+local development but **should never be how the deployment runs.** Turning on
+Vercel's Deployment Protection for preview URLs also helps, but the JWT check is
+what closes the `Host`-header route.
 
 ## Keeping this branch off main
 
@@ -97,7 +115,7 @@ wrong password costs a one-second delay.
 ## Running it locally
 
 ```bash
-ADMIN_PASSWORD=dev GITHUB_TOKEN=… GITHUB_TARGET_BRANCH=some-scratch-branch npm run dev
+GITHUB_TOKEN=… GITHUB_TARGET_BRANCH=some-scratch-branch npm run dev
 # http://localhost:3000 → /admin
 ```
 

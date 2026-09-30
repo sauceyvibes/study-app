@@ -1,29 +1,29 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { SESSION_COOKIE, verifySession } from '@/admin/session';
+import { accessConfig, verifyAccessToken } from '@/admin/cloudflare-access';
 
 /**
  * The admin deployment's front door.
  *
- * This branch is served on its own (sub)domain and exists only to edit the
- * corpus, so the root sends you to the editor, and everything under /admin and
- * /api/admin needs a valid session except the login page and endpoint.
+ * This branch is served on its own subdomain and exists only to edit the corpus,
+ * so the root sends you to the editor. Signing in is Cloudflare Zero Trust's job;
+ * here we only confirm the request actually came through it (see
+ * `cloudflare-access.ts`), so the `*.vercel.app` address cannot be used to get
+ * around it. Until CF_ACCESS_TEAM_DOMAIN and CF_ACCESS_AUD are set, nothing is
+ * checked, which is what local development wants.
  */
 export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-
-  if (pathname === '/') return NextResponse.redirect(new URL('/admin', request.url));
-  if (pathname === '/admin/login' || pathname === '/api/admin/login') return NextResponse.next();
-
-  if (await verifySession(request.cookies.get(SESSION_COOKIE)?.value)) return NextResponse.next();
-
-  if (pathname.startsWith('/api/')) {
-    return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  const config = accessConfig();
+  if (config) {
+    const token = request.headers.get('cf-access-jwt-assertion') ?? request.cookies.get('CF_Authorization')?.value;
+    if (!(await verifyAccessToken(token, config).catch(() => false))) {
+      return new NextResponse('Forbidden: open this site through its Cloudflare Access address.', { status: 403 });
+    }
   }
-  const login = new URL('/admin/login', request.url);
-  login.searchParams.set('next', pathname);
-  return NextResponse.redirect(login);
+  if (request.nextUrl.pathname === '/') return NextResponse.redirect(new URL('/admin', request.url));
+  return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/', '/admin/:path*', '/api/admin/:path*'],
+  // Everything but Next's own static assets.
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };

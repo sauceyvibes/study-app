@@ -1,10 +1,10 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { CORPUS, JOURNEY_BY_ID, PLACE_BY_ID, POLITY_BY_ID } from '../src/atlas/corpus';
 import { COLLECTIONS } from '../src/admin/schema';
 import { blankForm, parseRef, toEntry, toForm, type Entry } from '../src/admin/form';
 import { validateEntry } from '../src/admin/validate';
 import { knownIds } from '../src/admin/known';
-import { createSession, verifySession, checkPassword } from '../src/admin/session';
+import { verifyAccessToken } from '../src/admin/cloudflare-access';
 
 const known = knownIds({});
 
@@ -102,28 +102,45 @@ describe('admin validation', () => {
   });
 });
 
-describe('admin session', () => {
-  beforeEach(() => {
-    process.env.ADMIN_PASSWORD = 'correct horse';
-    process.env.ADMIN_SESSION_SECRET = 'secret';
+describe('Cloudflare Access check', () => {
+  const config = { teamDomain: 'team.cloudflareaccess.com', audience: 'aud-tag' };
+  const b64url = (bytes: Uint8Array | string) =>
+    Buffer.from(bytes).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+  async function setup() {
+    const pair = await crypto.subtle.generateKey(
+      { name: 'RSASSA-PKCS1-v1_5', modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: 'SHA-256' },
+      true,
+      ['sign', 'verify'],
+    );
+    const jwk = { ...(await crypto.subtle.exportKey('jwk', pair.publicKey)), kid: 'k1' };
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ keys: [jwk] }))));
+    const sign = async (payload: Record<string, unknown>, kid = 'k1') => {
+      const head = b64url(JSON.stringify({ alg: 'RS256', kid }));
+      const body = b64url(JSON.stringify(payload));
+      const sig = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', pair.privateKey, new TextEncoder().encode(`${head}.${body}`));
+      return `${head}.${body}.${b64url(new Uint8Array(sig))}`;
+    };
+    return sign;
+  }
+  const valid = () => ({ iss: 'https://team.cloudflareaccess.com', aud: ['aud-tag'], exp: Date.now() / 1000 + 600 });
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('accepts a token Access signed for this application', async () => {
+    const sign = await setup();
+    expect(await verifyAccessToken(await sign(valid()), config)).toBe(true);
   });
 
-  it('checks the password', async () => {
-    expect(await checkPassword('correct horse')).toBe(true);
-    expect(await checkPassword('correct hors')).toBe(false);
-  });
-
-  it('accepts its own tokens and rejects tampered or expired ones', async () => {
-    const token = await createSession();
-    expect(await verifySession(token)).toBe(true);
-    expect(await verifySession(token.replace(/.$/, (c) => (c === '0' ? '1' : '0')))).toBe(false);
-    expect(await verifySession(`9999999999.${token.split('.')[1]}`)).toBe(false);
-    expect(await verifySession(token, Date.now() + 8 * 24 * 3600 * 1000)).toBe(false);
-  });
-
-  it('signs everyone out when the password changes', async () => {
-    const token = await createSession();
-    process.env.ADMIN_PASSWORD = 'new password';
-    expect(await verifySession(token)).toBe(false);
+  it('rejects missing, expired, wrong-audience, wrong-issuer and tampered tokens', async () => {
+    const sign = await setup();
+    expect(await verifyAccessToken(undefined, config)).toBe(false);
+    expect(await verifyAccessToken(await sign({ ...valid(), exp: Date.now() / 1000 - 1 }), config)).toBe(false);
+    expect(await verifyAccessToken(await sign({ ...valid(), aud: ['other-app'] }), config)).toBe(false);
+    expect(await verifyAccessToken(await sign({ ...valid(), iss: 'https://evil.cloudflareaccess.com' }), config)).toBe(false);
+    const [h, , sig] = (await sign(valid())).split('.');
+    const forged = b64url(JSON.stringify({ ...valid(), email: 'someone@else' }));
+    expect(await verifyAccessToken(`${h}.${forged}.${sig}`, config)).toBe(false);
+    expect(await verifyAccessToken(await sign(valid(), 'unknown-kid'), config)).toBe(false);
   });
 });

@@ -12,9 +12,8 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
     ...init,
     headers: init?.body ? { 'Content-Type': 'application/json' } : undefined,
   });
-  if (response.status === 401) {
-    window.location.assign(`/admin/login?next=${encodeURIComponent(window.location.pathname)}`);
-    throw new Error('Not signed in');
+  if (response.status === 403) {
+    throw new Error('Cloudflare Access refused the request — your session may have expired. Reload the page.');
   }
   const body = (await response.json().catch(() => ({}))) as T & { error?: string; errors?: string[] };
   if (!response.ok) throw Object.assign(new Error(body.error ?? `Request failed (${response.status})`), { errors: body.errors });
@@ -103,11 +102,6 @@ export function AdminEditor() {
     }
   }
 
-  async function signOut() {
-    await fetch('/api/admin/logout', { method: 'POST' });
-    window.location.assign('/admin/login');
-  }
-
   return (
     <div className="admin-shell">
       <header className="admin-header">
@@ -117,7 +111,6 @@ export function AdminEditor() {
             commits to <code>{target.repo}</code> on <code>{target.branch}</code>
           </span>
         )}
-        <button type="button" className="admin-button" onClick={signOut}>Sign out</button>
       </header>
 
       <nav className="admin-tabs" aria-label="Collections">
